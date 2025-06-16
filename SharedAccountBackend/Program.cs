@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using SharedAccountBackend;
 using SharedAccountBackend.Data;
 using SharedAccountBackend.Hubs;
 
@@ -59,11 +60,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseRouting();
-//app.UseCors("AllowExtension");
-app.UseCors("AllowAll");
-//app.UseHttpsRedirection();
+app.UseCors("AllowExtension");
+app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<LogHub>("/logHub");
 
+
+await app.Services.SeedDataContext();
+
 app.Run();
+

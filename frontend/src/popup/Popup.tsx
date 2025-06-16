@@ -10,6 +10,7 @@ const Popup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [error, setError] = useState<String | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   let lastRequestTime = Date.now();
 
@@ -41,6 +42,9 @@ const Popup = () => {
       if (res.status === 200) {
         // Успешный вход
         localStorage.setItem('token', res.data.token);
+        localStorage.setItem('username', username);
+        const userRole = res.data.role || 'User';
+        setIsAdmin(userRole === 'Admin');
         setIsLoggedIn(true);
       } else if (res.status === 401) {
         setError('Неверное имя пользователя или пароль');
@@ -65,6 +69,11 @@ const Popup = () => {
       setIsLoading(false);
     }
   };
+
+  const openAdminPanel = () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('admin.html') });
+  };
+
   return (
     <div className="popup-container">
       <div className="popup-header"> Вход в Shared Account</div>
@@ -110,6 +119,16 @@ const Popup = () => {
           >
             {isLoading ? 'Вход...' : 'Войти'}
           </button>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={openAdminPanel}
+              className="admin-button"
+            >
+              Admin Panel
+            </button>
+          )}
         </form>
       )}
     </div>

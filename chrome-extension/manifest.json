@@ -30,7 +30,7 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["src/admin/admin.html"],
+      "resources": ["admin.html"],
       "matches": ["<all_urls>"]
     }
   ]
