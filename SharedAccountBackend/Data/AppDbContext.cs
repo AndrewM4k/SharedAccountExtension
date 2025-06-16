@@ -9,5 +9,11 @@ namespace SharedAccountBackend.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<UserAction> UserActions { get; set; }
+        public DbSet<CopartAction> CopartActions { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=shared_account;Username=postgres;Password=mac1475963!");
+        }
     }
 }

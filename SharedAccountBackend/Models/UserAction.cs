@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace SharedAccountBackend.Models
+﻿namespace SharedAccountBackend.Models
 {
     public class UserAction
     {

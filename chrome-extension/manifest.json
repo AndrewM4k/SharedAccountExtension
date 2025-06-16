@@ -5,14 +5,21 @@
   "action": {
     "default_popup": "src/popup/popup.html"
   },
-  "permissions": ["storage", "tabs", "scripting"],
-  "host_permissions": ["http://localhost:5000/*"],
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://*.copart.com/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["https://*.copart.com/*"],
       "js": ["contentScript.js"]
     }
   ],

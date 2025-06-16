@@ -21,14 +21,22 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "API", Version = "v1" });
 });
 
-// Database (требует ConnectionString в appsettings.json)
+// Database (требует PostgreSQL в appsettings.json)
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL")
+        //,
+        //o => o.MigrationsAssembly("SharedAccountBackend.Migrations.Project")
+    ));
 
 builder.Services.AddSignalR();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
 // Middleware pipeline
 if (app.Environment.IsDevelopment())
 {

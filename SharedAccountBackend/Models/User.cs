@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace SharedAccountBackend.Models
+﻿namespace SharedAccountBackend.Models
 {
     public class User
     {
