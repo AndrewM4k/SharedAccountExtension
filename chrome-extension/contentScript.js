@@ -18,9 +18,22 @@ document.addEventListener('click', (e) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((request) => {
-  if (request.action === 'fillCredentials') {
-    document.querySelector('input[name="login"]').value = request.login;
-    document.querySelector('input[name="password"]').value = request.password;
+// chrome.runtime.onMessage.addListener((request) => {
+//   if (request.action === 'fillCredentials') {
+//     document.querySelector('input[name="login"]').value = request.login;
+//     document.querySelector('input[name="password"]').value = request.password;
+//   }
+// });
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'FILL_COPART_CREDS') {
+    const usernameInput = document.querySelector('#input_username');
+    const passwordInput = document.querySelector('#input_password');
+
+    if (usernameInput && passwordInput) {
+      usernameInput.value = message.login;
+      passwordInput.value = message.password;
+      document.querySelector('#sign_in').click();
+    }
   }
 });

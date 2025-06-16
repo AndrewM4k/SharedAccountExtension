@@ -17,9 +17,9 @@ namespace SharedAccountBackend.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
-        private readonly ILogger _logger;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(AppDbContext db, IConfiguration config, ILogger logger)
+        public AuthController(AppDbContext db, IConfiguration config, ILogger<AuthController> logger)
         {
             _db = db;
             _config = config;
@@ -29,9 +29,13 @@ namespace SharedAccountBackend.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Invalid request" });
+            }
             var user = _db.Users.FirstOrDefault(u => u.Username == request.Email);
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-                return Unauthorized();
+                return Unauthorized(new { message = "Invalid username or password" });
 
             var token = GenerateJwtToken(user);
             return Ok(new { Token = token });
@@ -110,6 +114,4 @@ namespace SharedAccountBackend.Controllers
             }
         }
     }
-
-
 }

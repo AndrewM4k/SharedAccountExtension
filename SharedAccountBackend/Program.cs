@@ -30,6 +30,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddSignalR();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowExtension", policy =>
+    {
+        policy.AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+        //.SetIsOriginAllowed(origin =>
+        //    origin.Contains("chrome-extension://") ||
+        //    origin.StartsWith("http://localhost"))
+            ;
+    });
+});
+
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -43,8 +58,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseHttpsRedirection();
+app.UseRouting();
+//app.UseCors("AllowExtension");
+app.UseCors("AllowAll");
+//app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<LogHub>("/logHub");

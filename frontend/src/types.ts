@@ -1,3 +1,5 @@
+import React from 'react';
+
 export interface UserAction {
   id: number;
   action: string;
@@ -26,4 +28,9 @@ export interface ApiResponse<T> {
   totalCount: number;
   page: number;
   pageSize: number;
+}
+
+export interface AlertProps {
+  variant?: 'success' | 'danger' | 'warning' | 'info';
+  children: React.ReactNode;
 }

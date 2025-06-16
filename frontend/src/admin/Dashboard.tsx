@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import CopartActionsTable from './CopartActionsTable';
 import ActionFilters from './ActionFilters';
 import { ApiResponse, CopartAction } from '../types';
+import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
   const [actions, setActions] = useState<CopartAction[]>([]);
