@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import * as helpers from '.././helpers';
 
 const AdminPanel = () => {
   const [users, setUsers] = useState([]);
@@ -14,7 +15,7 @@ const AdminPanel = () => {
   }, []);
 
   const fetchUsers = async () => {
-    const token = localStorage.getItem('token');
+    const token = helpers.getCookie('accessToken');
     const response = await fetch('http://localhost:5000/api/admin/users', {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -45,7 +46,7 @@ const AdminPanel = () => {
   };
 
   const deleteUser = async (id: number) => {
-    if (window.confirm('Are you sure?')) {
+    if (window.confirm('Вы уверены, что хотите удалить пользователя?')) {
       await fetch(`http://localhost:5000/api/admin/users/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },

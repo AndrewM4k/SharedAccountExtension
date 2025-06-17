@@ -15,7 +15,6 @@ namespace SharedAccountBackend
             var adminExists = await context.Users.AnyAsync(u => u.Username == adminUsername);
             if (!adminExists)
             {
-                // Генерация надежного пароля
                 var password = "InitialPassword300_500$";
                 Console.WriteLine($"Admin password: {password}"); // Для начального использования
 
