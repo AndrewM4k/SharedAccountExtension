@@ -2,7 +2,7 @@
 {
     public static class PasswordGenerator
     {
-        static string GenerateStrongPassword(int length)
+        public static string GenerateStrongPassword(int length)
         {
             const string validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_-+=[{]}|;:,<.>/?";
             var random = new Random();

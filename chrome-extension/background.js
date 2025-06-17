@@ -1,6 +1,6 @@
-chrome.omnibox.onInputEntered.addListener(() => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('src/admin/admin.html') });
-});
+// chrome.omnibox.onInputEntered.addListener(() => {
+//   chrome.tabs.create({ url: chrome.runtime.getURL('src/admin/admin.html') });
+// });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'GET_COPART_CREDS') {
@@ -17,9 +17,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + localStorage.getItem('token'),
+        Authorization: 'Bearer ' + getCookie('token'),
       },
       body: JSON.stringify(msg),
     });
   }
 });
+
+export function getCookie(name) {
+  //const matches = document.cookie.match(new RegExp(`(?:^|; )${name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, "\\$1")}=([^;]*)`));
+  const matches = document.cookie.match(
+    new RegExp(
+      `(?:^|; )${name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1')}=([^;]*)`
+    )
+  );
+  return matches ? decodeURIComponent(matches[1]) : '';
+}

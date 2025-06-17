@@ -9,11 +9,13 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(__dirname, 'src/popup/popup.html'),
-        admin: resolve(__dirname, 'src/admin/admin.html'),
+        admin: resolve(__dirname, 'src/adminPanel/admin.html'),
+        dashboard: resolve(__dirname, 'src/dashboard/dashboard.html'),
       },
       output: {
-        entryFileNames: '[name].js',
-        assetFileNames: '[name].[ext]',
+        entryFileNames: `[name].js`,
+        chunkFileNames: `[name].js`,
+        assetFileNames: `[name].[ext]`,
       },
     },
   },

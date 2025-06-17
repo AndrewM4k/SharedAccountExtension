@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as helpers from '.././helpers';
+import * as apiService from '.././apiService';
 
 const AdminPanel = () => {
   const [users, setUsers] = useState([]);
@@ -16,12 +17,11 @@ const AdminPanel = () => {
 
   const fetchUsers = async () => {
     const token = helpers.getCookie('accessToken');
-    const response = await fetch('http://localhost:5000/api/admin/users', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (response.ok) {
-      setUsers(await response.json());
+    const response = await apiService.getUsers(token);
+    if (response.status == 200) {
+      var users = await response.data;
+      console.log('users', users);
+      setUsers(users);
     } else {
       setError('Failed to fetch users');
     }
