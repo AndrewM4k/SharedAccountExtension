@@ -9,5 +9,8 @@ namespace SharedAccountBackend.Models
         public string PasswordHash { get; set; }
         public List<UserAction> Actions { get; set; }
         public Role Role { get; set; }
+
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiry { get; set; }
     }
 }

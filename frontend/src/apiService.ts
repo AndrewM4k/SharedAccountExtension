@@ -6,16 +6,35 @@ export const login = (username: string, password: string) => {
     `${API_BASE}/auth/login`,
     { email: username, password: password }, // Используем username вместо email
     {
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },
-      validateStatus: (status) => status < 500, // Не бросать ошибку для 4xx
+      //validateStatus: (status) => status < 500, // Не бросать ошибку для 4xx
     }
   );
 };
 
-export const getUsers = (token: string) => {
+export const me = () => {
+  return axios.post(`${API_BASE}/auth/me`, {
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+};
+
+export const check = () => {
+  return axios.post(`${API_BASE}/auth/check`, {
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+};
+
+export function getUsers(token: string) {
   return axios.get(`${API_BASE}/admin/users`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-};
+}

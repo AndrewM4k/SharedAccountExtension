@@ -1,9 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 using SharedAccountBackend.Data;
-using SharedAccountBackend.Hubs;
 using System.Security.Claims;
 using SharedAccountBackend.Models;
 using SharedAccountBackend.Dtos;
@@ -21,7 +18,7 @@ namespace SharedAccountBackend.Controllers
             _db = db;
         }
 
-        [HttpGet("admin/users")]
+        [HttpGet("api/admin/users")]
         [Authorize(Roles = "Admin")]
         public IActionResult GetUsers()
         {
@@ -68,6 +65,30 @@ namespace SharedAccountBackend.Controllers
             await _db.SaveChangesAsync();
 
             return Ok();
+        }
+
+        [HttpGet("public/users")]
+        public IActionResult GetUsersPublic()
+        {
+            var users = _db.Users
+                .Select(u => new { u.Id, u.Username })
+                .ToList();
+            return Ok(users);
+        }
+
+        [HttpGet("check-tokens")]
+        public IActionResult CheckTokens()
+        {
+            var accessToken = Request.Cookies["access_token"];
+            var refreshToken = Request.Cookies["refresh_token"];
+
+            return Ok(new
+            {
+                HasAccessToken = !string.IsNullOrEmpty(accessToken),
+                HasRefreshToken = !string.IsNullOrEmpty(refreshToken),
+                AccessTokenLength = accessToken?.Length ?? 0,
+                RefreshTokenLength = refreshToken?.Length ?? 0
+            });
         }
     }
 }

@@ -6,6 +6,7 @@ using Microsoft.OpenApi.Models;
 using SharedAccountBackend;
 using SharedAccountBackend.Data;
 using SharedAccountBackend.Hubs;
+using SharedAccountBackend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["TokenSecret"]!)),
             ValidateIssuer = false,
             ValidateAudience = false,
+            //ValidIssuer = builder.Configuration["TokenSecretIssuer"],
+            //ValidAudience = builder.Configuration["TokenSecretAudience"],
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // Берем токен из куки
+                context.Token = context.Request.Cookies["access_token"];
+                return Task.CompletedTask;
+            }
         };
     });
 builder.Services.AddControllers();
@@ -49,9 +62,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowExtension", policy =>
     {
-        policy.AllowAnyHeader()
+        policy.WithOrigins(
+                "chrome-extension://imambnhajobfgoahcheibndblofimcof", // Ваш ID расширения
+                "https://localhost:5001"
+            )
+            .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials()
+            
         //.SetIsOriginAllowed(origin =>
         //    origin.Contains("chrome-extension://") ||
         //    origin.StartsWith("http://localhost"))
@@ -59,17 +77,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddScoped<TokenService>();
 builder.Services.AddSwaggerGen(c =>
     {
-        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Description = "JWT Authorization header using the Bearer scheme (Example: 'Bearer 12345abcdef') Password_04Administrator ",
-            Name = "Authorization",
-            In = ParameterLocation.Header,
-            Type = SecuritySchemeType.ApiKey,
-            Scheme = "Bearer"
-        });
-
         c.AddSecurityRequirement(new OpenApiSecurityRequirement
         {
             {
@@ -83,6 +93,15 @@ builder.Services.AddSwaggerGen(c =>
                 },
                 Array.Empty<string>()
             }
+        });
+
+        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header using the Bearer scheme (Example: 'Bearer 12345abcdef') AdminIsGod InitialPassword300_500$ ",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer"
         });
     }
 );
@@ -99,10 +118,19 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+        c.ConfigObject.AdditionalItems["requestOptions"] = new
+        {
+            credentials = "include" // Разрешить отправку кук
+        };
+    });
 }
-app.UseRouting();
-app.UseCors("AllowExtension");
+app.UseRouting(); 
+app.UseCors("ChromeExtension");
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<LogHub>("/logHub");

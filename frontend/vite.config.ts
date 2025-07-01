@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: '../chrome-extension',
+    outDir: path.resolve(__dirname, 'dist'),
+    emptyOutDir: true, // Очищаем dist, а не chrome-extension
     rollupOptions: {
       input: {
         popup: resolve(__dirname, 'src/popup/popup.html'),
@@ -17,6 +19,11 @@ export default defineConfig({
         chunkFileNames: `[name].js`,
         assetFileNames: `[name].[ext]`,
       },
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
     },
   },
 });

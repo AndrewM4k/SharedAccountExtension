@@ -3,7 +3,7 @@ import CopartActionsTable from './CopartActionsTable';
 import ActionFilters from './ActionFilters';
 import { ApiResponse, CopartAction } from '../types';
 import './Dashboard.css';
-
+import { createRoot } from 'react-dom/client';
 const Dashboard: React.FC = () => {
   const [actions, setActions] = useState<CopartAction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ const Dashboard: React.FC = () => {
       }).toString();
 
       const response = await fetch(
-        `http://localhost:5000/api/actions?${query}`,
+        `https://localhost:5001/api/actions?${query}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -78,3 +78,6 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
+const root = createRoot(document.getElementById('root')!);
+root.render(<Dashboard />);

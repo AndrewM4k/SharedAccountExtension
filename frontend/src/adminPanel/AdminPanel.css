@@ -1,0 +1,15 @@
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+.admin-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.create-user-form {
+  display: flex;
+  flex-direction: column;
+}
+.user-form-container {
+  display: flex;
+  flex-direction: row;
+}

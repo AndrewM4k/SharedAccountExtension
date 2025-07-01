@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import * as helpers from '.././helpers';
 import * as apiService from '.././apiService';
+import { createRoot } from 'react-dom/client';
+import './AdminPanel.css';
+import api from '../api';
 
 const AdminPanel = () => {
   const [users, setUsers] = useState([]);
@@ -12,18 +15,75 @@ const AdminPanel = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    console.log('Start');
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // 1. Проверяем, есть ли access token
+        const accessTokenResponse = await fetch(
+          'https://localhost:5001/api/auth/check',
+          {
+            credentials: 'include',
+          }
+        );
+
+        if (!accessTokenResponse.ok) {
+          // 2. Если access token невалиден, пробуем обновить токены
+          const refreshResponse = await fetch(
+            'https://localhost:5001/api/auth/refresh-token',
+            {
+              method: 'POST',
+              credentials: 'include',
+            }
+          );
+
+          if (!refreshResponse.ok) {
+            throw new Error('Refresh failed');
+          }
+
+          // 3. Повторно проверяем после обновления
+          const recheckResponse = await fetch(
+            'https://localhost:5001/api/auth/check',
+            {
+              credentials: 'include',
+            }
+          );
+
+          if (!recheckResponse.ok) {
+            throw new Error('Still not authenticated after refresh');
+          }
+        }
+
+        // 4. Проверяем роль пользователя
+        const userResponse = await fetch('https://localhost:5001/api/auth/me', {
+          credentials: 'include',
+        });
+
+        const userData = await userResponse.json();
+        if (userData.role !== 'Admin') {
+          throw new Error('Access denied');
+        }
+
+        // 5. Загружаем пользователей
+        fetchUsers();
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        //window.location.href = chrome.runtime.getURL('popup.html');
+      }
+    };
+
+    checkAuth();
+  }, []);
+
   const fetchUsers = async () => {
-    const token = helpers.getCookie('accessToken');
-    const response = await apiService.getUsers(token);
-    if (response.status == 200) {
-      var users = await response.data;
-      console.log('users', users);
-      setUsers(users);
-    } else {
-      setError('Failed to fetch users');
+    try {
+      const response = await api.get('/admin/users');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch users', error);
     }
   };
 
@@ -60,38 +120,49 @@ const AdminPanel = () => {
       <h1>User Management</h1>
 
       <div className="create-user-form">
-        <h2>Create New User</h2>
-        <input
-          type="text"
-          placeholder="Username"
-          value={newUser.username}
-          onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={newUser.password}
-          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-        />
-        <select
-          value={newUser.role}
-          onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-        >
-          <option value="User">User</option>
-          <option value="Admin">Admin</option>
-        </select>
-        <button onClick={createUser}>Create User</button>
+        <h2 className="ms-1 me-1">Create New User</h2>
+        <div className="user-form-container">
+          <input
+            className="form-control ms-1 me-1"
+            type="text"
+            placeholder="Username"
+            value={newUser.username}
+            onChange={(e) =>
+              setNewUser({ ...newUser, username: e.target.value })
+            }
+          />
+          <input
+            className="form-control ms-1 me-1"
+            type="password"
+            placeholder="Password"
+            value={newUser.password}
+            onChange={(e) =>
+              setNewUser({ ...newUser, password: e.target.value })
+            }
+          />
+          <select
+            className="form-select ms-1 me-1"
+            value={newUser.role}
+            onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+          >
+            <option value="User">User</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <button className="btn btn-primary ms-1 me-1 mt-1" onClick={createUser}>
+          Create User
+        </button>
       </div>
 
       {error && <div className="error">{error}</div>}
 
-      <table className="users-table">
+      <table className="table table-striped">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Username</th>
-            <th>Role</th>
-            <th>Actions</th>
+            <th scope="col">ID</th>
+            <th scope="col">Username</th>
+            <th scope="col">Role</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -101,7 +172,12 @@ const AdminPanel = () => {
               <td>{user.username}</td>
               <td>{user.role}</td>
               <td>
-                <button onClick={() => deleteUser(user.id)}>Delete</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => deleteUser(user.id)}
+                >
+                  Delete
+                </button>
               </td>
             </tr>
           ))}
@@ -112,3 +188,6 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
+
+const root = createRoot(document.getElementById('root')!);
+root.render(<AdminPanel />);

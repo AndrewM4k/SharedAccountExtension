@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SharedAccountBackend.Data;
@@ -11,9 +12,11 @@ using SharedAccountBackend.Data;
 namespace SharedAccountBackend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250619194743_ChangedUserAddTokens")]
+    partial class ChangedUserAddTokens
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -66,9 +69,10 @@ namespace SharedAccountBackend.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("RefreshToken")
+                        .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("RefreshTokenExpiry")
+                    b.Property<DateTime>("RefreshTokenExpiry")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Role")

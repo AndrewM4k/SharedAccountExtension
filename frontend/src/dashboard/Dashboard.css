@@ -1,3 +1,5 @@
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
 .dashboard-container {
   padding: 20px;
   max-width: 1200px;
