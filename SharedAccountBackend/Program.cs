@@ -60,11 +60,12 @@ builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowExtension", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
         policy.WithOrigins(
                 "chrome-extension://imambnhajobfgoahcheibndblofimcof", // Ваш ID расширения
-                "https://localhost:5001"
+                "https://localhost:5001",
+                "http://localhost:5000"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -128,7 +129,25 @@ if (app.Environment.IsDevelopment())
     });
 }
 app.UseRouting(); 
-app.UseCors("ChromeExtension");
+app.UseCors("AllowAll");
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Add("Access-Control-Allow-Origin",
+        context.Request.Headers["Origin"]);
+    context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
+
+    if (context.Request.Method == "OPTIONS")
+    {
+        context.Response.Headers.Add("Access-Control-Allow-Methods",
+            "GET, POST, PUT, DELETE, OPTIONS");
+        context.Response.Headers.Add("Access-Control-Allow-Headers",
+            "Content-Type, Authorization");
+        context.Response.StatusCode = 200;
+        return;
+    }
+
+    await next();
+});
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

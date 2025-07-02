@@ -5,7 +5,6 @@ using System.Security.Claims;
 using SharedAccountBackend.Models;
 using SharedAccountBackend.Dtos;
 using SharedAccountBackend.Enums;
-using SharedAccountBackend.Helpers;
 
 namespace SharedAccountBackend.Controllers
 {
@@ -28,7 +27,7 @@ namespace SharedAccountBackend.Controllers
             return Ok(users);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("api/admin/users/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteUser(int id)
         {
@@ -48,7 +47,8 @@ namespace SharedAccountBackend.Controllers
             return NoContent();
         }
 
-        [HttpPost("register")]
+        [HttpPost("api/admin/users/register")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Register([FromBody] UserDto model)
         {
             if (_db.Users.Any(u => u.Username == model.Username))
@@ -59,10 +59,30 @@ namespace SharedAccountBackend.Controllers
             await _db.Users.AddAsync(new User
             {
                 Username = model.Username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordGenerator.GenerateStrongPassword(model.LengthPassword)),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
                 Role = Role.User
             });
             await _db.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPut("api/admin/users/refresh-pass")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> RefreshPassword([FromBody] AdminPasswordUpdateRequestDto model)
+        {
+            if (_db.Users.Any(u => u.Id == model.Id))
+            {
+                var user = _db.Users.First(u => u.Id == model.Id);
+                if (model.Username != null)
+                    if(user.Username != model.Username) user.Username = model.Username;
+                else
+                    return BadRequest("Username is empty");
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+                await _db.SaveChangesAsync();
+            }
+            else
+                return BadRequest("Username is not exists");
 
             return Ok();
         }

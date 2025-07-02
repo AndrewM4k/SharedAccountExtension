@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using SharedAccountBackend.Data;
+using SharedAccountBackend.Helpers;
 using SharedAccountBackend.Models;
 using SharedAccountBackend.Services;
 
@@ -44,7 +46,7 @@ namespace SharedAccountBackend.Controllers
             var refreshToken = _tokenService.GenerateRefreshToken();
 
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            user.RefreshTokenExpiry = SettingConstants.RefreshTokenExpire;
             await _db.SaveChangesAsync();
 
             SetTokenCookies(accessToken, refreshToken);
@@ -53,50 +55,61 @@ namespace SharedAccountBackend.Controllers
         }
 
         [HttpPost("refresh-token")]
-        [ValidateAntiForgeryToken]
+        //[ValidateAntiForgeryToken]
         public async Task<IActionResult> RefreshToken()
         {
-            var accessToken = Request.Cookies["access_token"];
             var refreshToken = Request.Cookies["refresh_token"];
 
-            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(refreshToken))
-                return BadRequest("Invalid tokens");
+            if (string.IsNullOrEmpty(refreshToken))
+                return BadRequest("Refresh token is required");
+            // Ищем пользователя по refresh token
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
 
-            var principal = _tokenService.GetPrincipalFromExpiredToken(accessToken);
-            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-            var user = await _db.Users.FindAsync(userId);
-
-            if (user == null ||
-                user.RefreshToken != refreshToken ||
-                user.RefreshTokenExpiry <= DateTime.UtcNow)
+            if (user == null || user.RefreshTokenExpiry <= DateTime.UtcNow)
             {
                 return Unauthorized("Invalid refresh token");
             }
 
+            // Генерируем новую пару токенов
             var newAccessToken = _tokenService.GenerateAccessToken(user);
             var newRefreshToken = _tokenService.GenerateRefreshToken();
 
-            // Обновляем refresh token в БД
+            // Обновляем пользователя
             user.RefreshToken = newRefreshToken;
-            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            user.RefreshTokenExpiry = SettingConstants.RefreshTokenExpire;
             await _db.SaveChangesAsync();
 
             // Устанавливаем новые куки
             SetTokenCookies(newAccessToken, newRefreshToken);
 
-            return Ok(new { message = "Tokens refreshed" });
+            return Ok(new
+            {
+                message = "Tokens refreshed successfully",
+                access_token = newAccessToken // Для дебага
+            });
         }
 
         private void SetTokenCookies(string accessToken, string? refreshToken)
         {
+
+            bool isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+
+            Response.Cookies.Delete("access_token");
+            Response.Cookies.Delete("refresh_token");
+
+            Thread.Sleep(500);
+
             // Access token cookie
             Response.Cookies.Append("access_token", accessToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddMinutes(15)
+                //Expires = SettingConstants.AccessTokenExpire,
+                Domain = isDevelopment ? null : SettingConstants.Domain,
+                Path = "/",
+                IsEssential = true
             });
 
             // Refresh token cookie
@@ -105,8 +118,17 @@ namespace SharedAccountBackend.Controllers
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(7)
+                Expires = SettingConstants.RefreshTokenExpire,
+                Domain = isDevelopment ? null : SettingConstants.Domain,
+                Path = "/",
+                IsEssential = true
             });
+
+            //Response.Headers["Set-Cookie"] = new StringValues(new[]
+            //{
+            //    $"access_token={accessToken}; Expires={SettingConstants.AccessTokenExpire:R}; Path=/; Domain=localhost; HttpOnly; {(isDevelopment ? "" : "Secure; ")}SameSite={(isDevelopment ? "Lax" : "None")}",
+            //    $"refresh_token={refreshToken}; Expires={SettingConstants.RefreshTokenExpire:R}; Path=/; Domain=localhost; HttpOnly; {(isDevelopment ? "" : "Secure; ")}SameSite={(isDevelopment ? "Lax" : "None")}"
+            //});
         }
 
         [HttpPost("logout")]
@@ -187,13 +209,28 @@ namespace SharedAccountBackend.Controllers
         }
 
         [HttpGet("check")]
-        public IActionResult CheckAuth()
+        public async Task<IActionResult> CheckAuth()
         {
             // Проверяем, аутентифицирован ли пользователь
             if (User.Identity?.IsAuthenticated ?? false)
             {
                 return Ok(new { isAuthenticated = true });
             }
+
+            var refreshToken = Request.Cookies["refresh_token"];
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                // Проверяем в базе
+                var user = _db.Users.FirstOrDefault(u =>
+                    u.RefreshToken == refreshToken &&
+                    u.RefreshTokenExpiry > DateTime.UtcNow);
+
+                if (user != null)
+                {
+                    Response.Cookies.Delete("access_token");
+                }
+            }
+
             return Unauthorized(new { isAuthenticated = false });
         }
 

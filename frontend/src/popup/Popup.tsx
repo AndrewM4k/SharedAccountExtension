@@ -16,28 +16,53 @@ const Popup = () => {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await axios.get(
-        'https://localhost:5001/api/auth/check',
-        { withCredentials: true }
-      );
+      // 1. Проверяем основной статус
+      const checkResponse = await apiService.check();
 
-      if (response.status === 200) {
-        const userResponse = await axios.get(
-          'https://localhost:5001/api/auth/me',
-          { withCredentials: true }
-        );
+      if (checkResponse.status === 200) {
+        // 2. Получаем информацию о пользователе
+        const userResponse = await apiService.me();
 
         setIsLoggedIn(true);
         setUserRole(userResponse.data.role);
         setUsername(userResponse.data.username);
+        return;
       }
     } catch (error) {
-      console.log('User not authenticated');
+      console.log('Check failed');
+      // 3. Если ошибка, пробуем обновить токены
+      try {
+        // Пытаемся обновить токены
+        const refreshResponse = await apiService.refreshToken();
+
+        if (refreshResponse.status === 200) {
+          // Повторяем проверку после обновления
+          const recheckResponse = await apiService.check();
+          console.log('recheckResponse.status: ', recheckResponse.status);
+
+          if (recheckResponse.status === 200) {
+            const userResponse = await apiService.me();
+
+            setIsLoggedIn(true);
+            setUserRole(userResponse.data.role);
+            setUsername(userResponse.data.username);
+            return;
+          }
+        }
+      } catch (refreshError) {
+        console.log('Refresh token failed:', refreshError);
+      }
     }
+
+    // Если все проверки не прошли
+    setIsLoggedIn(false);
+    setUserRole('');
   };
 
   React.useEffect(() => {
+    setIsLoading(true);
     checkAuthStatus();
+    setIsLoading(false);
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -47,23 +72,10 @@ const Popup = () => {
 
     try {
       const response = await apiService.login(username, password);
-      // const response = await axios.post(
-      //   'https://localhost:5001/api/auth/login',
-      //   { username, password },
-      //   {
-      //     withCredentials: true, // Ключевой параметр для кук
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //     },
-      //   }
-      // );
 
       if (response.status === 200) {
         // Получаем информацию о пользователе
         checkAuthStatus();
-        //setIsLoggedIn(true);
-        //setUserRole(userResponse.data.role);
-        //onLoginSuccess();
       }
     } catch (err: any) {
       console.error('Full login error:', err);
@@ -110,30 +122,6 @@ const Popup = () => {
       </div>
     );
   }
-
-  // if (isLoggedIn) {
-  //   return (
-  //     <div className="popup-container">
-  //       <div className="popup-text">
-  //         Вы вошли как: <strong>{username}</strong>
-  //         <br />
-  //         Роль: <strong>{userRole}</strong>
-  //       </div>
-
-  //       {userRole === 'Admin' && (
-  //         <button onClick={openAdminPanel} className="admin-button">
-  //           Панель администратора
-  //         </button>
-  //       )}
-
-  //       <div className="logged-btn">
-  //         <button onClick={handleLogout} className="btn btn-outline-secondary">
-  //           Выйти
-  //         </button>
-  //       </div>
-  //     </div>
-  //   );
-  // }
 
   return (
     <div className="popup-container">

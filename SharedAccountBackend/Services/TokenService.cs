@@ -4,6 +4,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.VisualBasic;
+using SharedAccountBackend.Helpers;
 
 namespace SharedAccountBackend.Services
 {
@@ -23,7 +25,7 @@ namespace SharedAccountBackend.Services
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Username),
             new Claim(ClaimTypes.Role, user.Role.ToString())
-        };
+            };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                 _config["TokenSecret"]!));
@@ -34,7 +36,7 @@ namespace SharedAccountBackend.Services
                 //issuer: _config["TokenSecretIssuer"],
                 //audience: _config["TokenSecretAudience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15), // Короткая жизнь
+                expires: SettingConstants.AccessTokenExpire, // Короткая жизнь
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
@@ -48,6 +50,7 @@ namespace SharedAccountBackend.Services
             return Convert.ToBase64String(randomNumber);
         }
 
+        [Obsolete]
         public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
         {
             var tokenValidationParameters = new TokenValidationParameters

@@ -4,6 +4,7 @@ import * as apiService from '.././apiService';
 import { createRoot } from 'react-dom/client';
 import './AdminPanel.css';
 import api from '../api';
+import UserChangeModal from './UserChangeModal';
 
 const AdminPanel = () => {
   const [users, setUsers] = useState([]);
@@ -13,6 +14,7 @@ const AdminPanel = () => {
     role: 'User',
   });
   const [error, setError] = useState('');
+  const [modalActive, setModalActive] = useState('');
 
   useEffect(() => {
     console.log('Start');
@@ -23,14 +25,9 @@ const AdminPanel = () => {
     const checkAuth = async () => {
       try {
         // 1. Проверяем, есть ли access token
-        const accessTokenResponse = await fetch(
-          'https://localhost:5001/api/auth/check',
-          {
-            credentials: 'include',
-          }
-        );
+        const accessTokenResponse = await apiService.check();
 
-        if (!accessTokenResponse.ok) {
+        if (accessTokenResponse.status !== 200) {
           // 2. Если access token невалиден, пробуем обновить токены
           const refreshResponse = await fetch(
             'https://localhost:5001/api/auth/refresh-token',
@@ -45,25 +42,16 @@ const AdminPanel = () => {
           }
 
           // 3. Повторно проверяем после обновления
-          const recheckResponse = await fetch(
-            'https://localhost:5001/api/auth/check',
-            {
-              credentials: 'include',
-            }
-          );
+          const recheckResponse = await apiService.check();
 
-          if (!recheckResponse.ok) {
+          if (recheckResponse.status !== 200) {
             throw new Error('Still not authenticated after refresh');
           }
         }
 
         // 4. Проверяем роль пользователя
-        const userResponse = await fetch('https://localhost:5001/api/auth/me', {
-          credentials: 'include',
-        });
-
-        const userData = await userResponse.json();
-        if (userData.role !== 'Admin') {
+        const userResponse = await apiService.me();
+        if (userResponse.data.role != '0') {
           throw new Error('Access denied');
         }
 
@@ -88,14 +76,17 @@ const AdminPanel = () => {
   };
 
   const createUser = async () => {
-    const response = await fetch('http://localhost:5000/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-      body: JSON.stringify(newUser),
-    });
+    const response = await fetch(
+      'http://localhost:5000/api/admin/users/register',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(newUser),
+      }
+    );
 
     if (response.ok) {
       setNewUser({ username: '', password: '', role: 'User' });
@@ -115,6 +106,21 @@ const AdminPanel = () => {
     }
   };
 
+  const refreshPassword = async (id: number) => {
+    {
+      var refreshPassword = {
+        username: '',
+        newPAssword: '',
+      };
+
+      await fetch(`http://localhost:5000/api/admin/users/${id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify(refreshPassword),
+      });
+      fetchUsers();
+    }
+  };
   return (
     <div className="admin-container">
       <h1>User Management</h1>
@@ -161,6 +167,7 @@ const AdminPanel = () => {
           <tr>
             <th scope="col">ID</th>
             <th scope="col">Username</th>
+            <th scope="col">Password</th>
             <th scope="col">Role</th>
             <th scope="col">Actions</th>
           </tr>
@@ -170,13 +177,21 @@ const AdminPanel = () => {
             <tr key={user.id}>
               <td>{user.id}</td>
               <td>{user.username}</td>
-              <td>{user.role}</td>
+              <td>{user.username}</td>
+              <td>{user.role == '0' ? 'Admin' : 'User'}</td>
               <td>
                 <button
                   className="btn btn-primary"
                   onClick={() => deleteUser(user.id)}
                 >
                   Delete
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  onClick={() => refreshPassword(user.id)}
+                >
+                  Refresh Password
                 </button>
               </td>
             </tr>

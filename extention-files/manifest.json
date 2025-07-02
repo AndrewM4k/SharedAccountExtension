@@ -10,22 +10,27 @@
     "tabs",
     "scripting",
     "activeTab",
+    "cookies",
     "https://localhost:5001/*"
   ],
   "host_permissions": [
     "https://*.copart.com/*",
-    "https://localhost:5001/*",
-    "http://localhost:5000/*"
+    "https://localhost:5001/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["https://*.copart.com/*"],
-      "js": ["contentScript.js"]
+      "js": ["contentScript.js"],
+      "run_at": "document_end"
     }
   ],
+  "action": {
+    "default_popup": "popup.html"
+  },
   "omnibox": { "keyword": "admin" },
 
   "web_accessible_resources": [

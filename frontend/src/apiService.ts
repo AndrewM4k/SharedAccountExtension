@@ -16,7 +16,7 @@ export const login = (username: string, password: string) => {
 };
 
 export const me = () => {
-  return axios.post(`${API_BASE}/auth/me`, {
+  return axios.get(`${API_BASE}/auth/me`, {
     withCredentials: true,
     headers: {
       'Content-Type': 'application/json',
@@ -25,7 +25,16 @@ export const me = () => {
 };
 
 export const check = () => {
-  return axios.post(`${API_BASE}/auth/check`, {
+  return axios.get(`${API_BASE}/auth/check`, {
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+};
+
+export const refreshToken = () => {
+  return axios.post(`${API_BASE}/auth/refresh-token`, {
     withCredentials: true,
     headers: {
       'Content-Type': 'application/json',
