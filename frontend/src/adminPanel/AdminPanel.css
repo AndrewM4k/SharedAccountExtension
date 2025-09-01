@@ -1,4 +1,4 @@
-@import 'bootstrap/dist/css/bootstrap.min.css';
+@import "bootstrap/dist/css/bootstrap.min.css";
 
 .admin-container {
   display: flex;
@@ -12,4 +12,17 @@
 .user-form-container {
   display: flex;
   flex-direction: row;
+}
+th {
+  background: lightblue !important;
+  border-bottom: 1px solid black;
+}
+td {
+  padding: 12px 15px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid black;
+}
+table {
+  width: 95% !important;
 }

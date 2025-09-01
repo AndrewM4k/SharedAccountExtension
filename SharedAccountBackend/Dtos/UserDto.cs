@@ -1,7 +1,4 @@
-﻿using SharedAccountBackend.Enums;
-using SharedAccountBackend.Models;
-
-namespace SharedAccountBackend.Dtos
+﻿namespace SharedAccountBackend.Dtos
 {
     public class UserDto
     {

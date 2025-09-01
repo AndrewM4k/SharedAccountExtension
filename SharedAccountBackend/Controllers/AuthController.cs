@@ -1,15 +1,10 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Primitives;
-using Microsoft.IdentityModel.Tokens;
 using SharedAccountBackend.Data;
 using SharedAccountBackend.Helpers;
-using SharedAccountBackend.Models;
 using SharedAccountBackend.Services;
 
 namespace SharedAccountBackend.Controllers
@@ -46,7 +41,7 @@ namespace SharedAccountBackend.Controllers
             var refreshToken = _tokenService.GenerateRefreshToken();
 
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiry = SettingConstants.RefreshTokenExpire;
+            user.RefreshTokenExpiry = SettingConstants.RefreshTokenExpire();
             await _db.SaveChangesAsync();
 
             SetTokenCookies(accessToken, refreshToken);
@@ -77,7 +72,7 @@ namespace SharedAccountBackend.Controllers
 
             // Обновляем пользователя
             user.RefreshToken = newRefreshToken;
-            user.RefreshTokenExpiry = SettingConstants.RefreshTokenExpire;
+            user.RefreshTokenExpiry = SettingConstants.RefreshTokenExpire();
             await _db.SaveChangesAsync();
 
             // Устанавливаем новые куки
@@ -118,17 +113,11 @@ namespace SharedAccountBackend.Controllers
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
-                Expires = SettingConstants.RefreshTokenExpire,
+                Expires = SettingConstants.RefreshTokenExpire(),
                 Domain = isDevelopment ? null : SettingConstants.Domain,
                 Path = "/",
                 IsEssential = true
             });
-
-            //Response.Headers["Set-Cookie"] = new StringValues(new[]
-            //{
-            //    $"access_token={accessToken}; Expires={SettingConstants.AccessTokenExpire:R}; Path=/; Domain=localhost; HttpOnly; {(isDevelopment ? "" : "Secure; ")}SameSite={(isDevelopment ? "Lax" : "None")}",
-            //    $"refresh_token={refreshToken}; Expires={SettingConstants.RefreshTokenExpire:R}; Path=/; Domain=localhost; HttpOnly; {(isDevelopment ? "" : "Secure; ")}SameSite={(isDevelopment ? "Lax" : "None")}"
-            //});
         }
 
         [HttpPost("logout")]

@@ -2,9 +2,12 @@ const fs = require('fs-extra');
 const path = require('path');
 
 async function copyExtensionFiles() {
-  const projectRoot = path.resolve(__dirname, '../');
+  const projectRoot = path.resolve(__dirname,  '../../../');
   const frontendDist = path.join(projectRoot, 'frontend/dist');
   const extensionDir = path.join(projectRoot, 'chrome-extension');
+
+  console.log(`frontendDist: ${frontendDist}`);
+  console.log(`extensionDir: ${extensionDir}`);
 
   // 1. Копируем результат сборки фронтенда
   await fs.copy(frontendDist, extensionDir, { overwrite: true });
@@ -14,13 +17,13 @@ async function copyExtensionFiles() {
     'manifest.json',
     'background.js',
     'contentScript.js',
-    'icons/icon16.png',
-    'icons/icon48.png',
-    'icons/icon128.png',
+    // 'icons/icon16.png',
+    // 'icons/icon48.png',
+    // 'icons/icon128.png',
   ];
 
   for (const file of extensionFiles) {
-    const source = path.join(projectRoot, 'extension-files', file);
+    const source = path.join(projectRoot, 'extention-files', file);
     const dest = path.join(extensionDir, file);
 
     if (await fs.pathExists(source)) {

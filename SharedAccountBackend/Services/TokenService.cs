@@ -36,7 +36,7 @@ namespace SharedAccountBackend.Services
                 //issuer: _config["TokenSecretIssuer"],
                 //audience: _config["TokenSecretAudience"],
                 claims: claims,
-                expires: SettingConstants.AccessTokenExpire, // Короткая жизнь
+                expires: SettingConstants.AccessTokenExpire(), // Короткая жизнь
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token);

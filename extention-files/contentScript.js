@@ -1,19 +1,23 @@
-if (window.location.href.includes('copart.com/login')) {
-  chrome.runtime.sendMessage({ type: 'GET_COPART_CREDS' }, (creds) => {
-    document.querySelector('#input_username').value = creds.login;
-    document.querySelector('#input_password').value = creds.password;
-    document.querySelector('#sign_in').click();
+if (
+  window.location.href.includes("copart.com/ru/login") ||
+  window.location.href.includes("copart.com/en/login")
+) {
+  console.log("script started");
+  chrome.runtime.sendMessage({ type: "GET_COPART_CREDS" }, (creds) => {
+    document.querySelector("#username").value = creds.login;
+    document.querySelector("#password").value = creds.password;
+    document.querySelector("#sign_in").click();
   });
 }
 // Отслеживание покупок
-document.addEventListener('click', (e) => {
-  if (e.target.closest('.bid-btn')) {
-    const lot = document.querySelector('.lot-number').innerText;
+document.addEventListener("click", (e) => {
+  if (e.target.closest(".bid-btn")) {
+    const lot = document.querySelector(".lot-number").innerText;
     chrome.runtime.sendMessage({
-      type: 'RECORD_ACTION',
-      actionType: 'BID',
+      type: "RECORD_ACTION",
+      actionType: "BID",
       lotNumber: lot,
-      details: { price: document.querySelector('.bid-price').value },
+      details: { price: document.querySelector(".bid-price").value },
     });
   }
 });
@@ -26,14 +30,14 @@ document.addEventListener('click', (e) => {
 // });
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message.type === 'FILL_COPART_CREDS') {
-    const usernameInput = document.querySelector('#input_username');
-    const passwordInput = document.querySelector('#input_password');
+  if (message.type === "FILL_COPART_CREDS") {
+    const usernameInput = document.querySelector("#username");
+    const passwordInput = document.querySelector("#password");
 
     if (usernameInput && passwordInput) {
       usernameInput.value = message.login;
       passwordInput.value = message.password;
-      document.querySelector('#sign_in').click();
+      document.querySelector("#sign_in").click();
     }
   }
 });
