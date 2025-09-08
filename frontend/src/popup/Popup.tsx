@@ -14,6 +14,21 @@ const Popup = () => {
   const [error, setError] = useState<String | null>(null);
   const [userRole, setUserRole] = useState('');
 
+  React.useEffect(()=>{
+    if(isLoggedIn){
+      console.log("Start auth");
+      chrome.runtime.sendMessage({ 
+      action: 'authOnCopart' 
+      });
+    }
+    else{
+      console.log("Stop auth");
+      chrome.runtime.sendMessage({ 
+      action: 'logoutOnCopart' 
+      });      
+    }
+  },[isLoggedIn])
+
   const checkAuthStatus = async () => {
     try {
       // 1. Проверяем основной статус
@@ -26,7 +41,7 @@ const Popup = () => {
         setIsLoggedIn(true);
         setUserRole(userResponse.data.role);
         setUsername(userResponse.data.username);
-        return;
+        return userResponse.data.role;
       }
     } catch (error) {
       console.log('Check failed');
@@ -38,7 +53,7 @@ const Popup = () => {
         if (refreshResponse.status === 200) {
           // Повторяем проверку после обновления
           const recheckResponse = await apiService.check();
-          console.log('recheckResponse.status: ', recheckResponse.status);
+          console.log('стату собновленяи токенов: ', recheckResponse.status);
 
           if (recheckResponse.status === 200) {
             const userResponse = await apiService.me();

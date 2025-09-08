@@ -7,7 +7,7 @@ namespace SharedAccountBackend.Models
         public int Id { get; set; }
         public string Username { get; set; }
         public string PasswordHash { get; set; }
-        public List<UserAction> Actions { get; set; }
+        public List<CopartAction> Actions { get; set; }
         public Role Role { get; set; }
 
         public string? RefreshToken { get; set; }

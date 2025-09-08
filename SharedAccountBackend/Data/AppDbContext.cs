@@ -8,7 +8,6 @@ namespace SharedAccountBackend.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
-        public DbSet<UserAction> UserActions { get; set; }
         public DbSet<CopartAction> CopartActions { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

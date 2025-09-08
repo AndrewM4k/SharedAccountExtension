@@ -3,7 +3,8 @@
   "name": "Shared Account",
   "version": "1.0",
   "action": {
-    "default_popup": "src/popup/popup.html"
+    "default_popup": "src/popup/popup.html",
+    "default_title": "Shared Account"
   },
   "permissions": [
     "storage",
@@ -11,11 +12,14 @@
     "scripting",
     "activeTab",
     "cookies",
-    "https://localhost:5001/*"
+    "webRequest",
+    "webRequestBlocking",
+    "*://localhost/*",
+    "https://www.copart.com/*"
   ],
   "host_permissions": [
-    "https://*.copart.com/*",
-    "https://localhost:5001/*"
+    "*://*.copart.com/*",
+    "*://localhost/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -29,7 +33,7 @@
       "js": [
         "contentScript.js"
       ],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
   ],
   "omnibox": {
