@@ -2,6 +2,7 @@
 using SharedAccountBackend.Data;
 using SharedAccountBackend.Enums;
 using SharedAccountBackend.Models;
+using SharedAccountBackend.Services;
 
 namespace SharedAccountBackend
 {
@@ -11,6 +12,26 @@ namespace SharedAccountBackend
         {
             using var scope = services.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var cs = scope.ServiceProvider.GetRequiredService<CryptoService>();
+
+            var credentialsExists = await context.SharedAccounts.AnyAsync(u => u.IsActive);
+
+            if (!credentialsExists)
+            {
+                var password = "Kentucky$9598";
+                var login = "331271";
+
+                var initialCredentials = new SharedAccount
+                {
+                    IsActive = true,
+                    CopartLogin = login,
+                    CopartPassword = cs.Encrypt(password)
+                };
+
+                context.SharedAccounts.Add(initialCredentials);
+                await context.SaveChangesAsync();
+            }
+
             const string adminUsername = "AdminIsGod";
             var adminExists = await context.Users.AnyAsync(u => u.Username == adminUsername);
             if (!adminExists)

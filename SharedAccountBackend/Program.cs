@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -77,8 +78,23 @@ builder.Services.AddCors(options =>
             ;
     });
 });
-
+builder.Services.AddHttpClient("CopartClient", client =>
+{
+    client.BaseAddress = new Uri("https://www.copart.com/");
+    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+    client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+    client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.5");
+    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
+    client.DefaultRequestHeaders.Add("Connection", "keep-alive");
+    client.DefaultRequestHeaders.Add("Upgrade-Insecure-Requests", "1");
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    UseCookies = true,
+    AllowAutoRedirect = true,
+    AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+});
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddSingleton<CryptoService>();
 builder.Services.AddSwaggerGen(c =>
     {
         c.AddSecurityRequirement(new OpenApiSecurityRequirement
