@@ -1,124 +1,3 @@
-// chrome.omnibox.onInputEntered.addListener(() => {
-//   chrome.tabs.create({ url: chrome.runtime.getURL('src/admin/admin.html') });
-// });
-
-// chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-//   if (msg.type === 'GET_COPART_CREDS') {
-//     // Запрос к вашему бэкенду
-//     fetch('http://localhost:5000/api/sharedaccount')
-//       .then((res) => res.json())
-//       .then((creds) => sendResponse(creds));
-//     return true;
-//   }
-
-//   if (msg.type === 'RECORD_ACTION') {
-//     // Отправка действия на сервер
-//     fetch('http://localhost:5000/api/action/record', {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/json',
-//         Authorization: 'Bearer ' + getCookie('token'),
-//       },
-//       body: JSON.stringify(msg),
-//     });
-//   }
-// });
-
-// export function getCookie(name) {
-//   //const matches = document.cookie.match(new RegExp(`(?:^|; )${name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, "\\$1")}=([^;]*)`));
-//   const matches = document.cookie.match(
-//     new RegExp(
-//       `(?:^|; )${name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1')}=([^;]*)`
-//     )
-//   );
-//   return matches ? decodeURIComponent(matches[1]) : '';
-// }
-// background.js
-
-async function authOnCopart() {
-  try {
-    // Выполняем авторизацию на Copart
-    const authUrl = "https://www.copart.com/login/";
-
-    const copartCredentials = {
-      login: "331271", // Заменить на запрос
-      password: "Kentucky$9598",
-    };
-
-    const tab = await chrome.tabs.create({
-      url: "https://www.copart.com/login/",
-      active: false, // Открываем в фоне
-    });
-
-    // Ждем, пока вкладка загрузится
-    await new Promise((resolve) => {
-      chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-        if (tabId === tab.id && info.status === "complete") {
-          chrome.tabs.onUpdated.removeListener(listener);
-          resolve();
-        }
-      });
-    });
-
-    // Вводим данные и отправляем форму
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: (login, password) => {
-        // Ищем форму и вводим данные
-        const usernameField = document.querySelector('input[name="username"]');
-        const passwordField = document.querySelector('input[name="password"]');
-        const submitButton = document.querySelector('button[type="submit"]');
-
-        if (usernameField && passwordField && submitButton) {
-          usernameField.value = copartCredentials.login;
-          passwordField.value = copartCredentials.password;
-          submitButton.click();
-        } else {
-          throw new Error("Не найдены поля формы авторизации");
-        }
-      },
-      args: [copartCredentials.login, copartCredentials.password],
-    });
-
-    // Ждем, пока вкладка перейдет на другую страницу (успешная авторизация)
-    await new Promise((resolve) => {
-      chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-        if (tabId === tab.id && info.status === "complete") {
-          chrome.tabs.onUpdated.removeListener(listener);
-          resolve();
-        }
-      });
-    });
-
-    // Закрываем вкладку
-    chrome.tabs.remove(tab.id);
-
-    sendResponse({ success: true });
-    // const response = await fetch(authUrl, {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/x-www-form-urlencoded",
-    //   },
-    //   body: `username=${copartCredentials.login}&password=${copartCredentials.password}`,
-    // });
-
-    // if (response.ok) {
-    //   // Сохраняем куки для дальнейшего использования
-    //   const cookies = await chrome.cookies.getAll({ domain: ".copart.com" });
-    //   await chrome.storage.local.set({ copartCookies: cookies });
-
-    //   console.log("Успешная авторизация на Copart");
-    //   return true;
-    // } else {
-    //   console.error("Ошибка авторизации на Copart");
-    //   return false;
-    // }
-  } catch (error) {
-    console.error("Ошибка при авторизации на Copart:", error);
-    return false;
-  }
-}
-
 async function authOnCopartThroughTab() {
   const credentials = {
     login: "331271", // Заменить на запрос
@@ -140,6 +19,7 @@ async function authOnCopartThroughTab() {
         ) {
           if (tabIdUpdated === tabId && info.status === "complete") {
             chrome.tabs.onUpdated.removeListener(listener);
+
             fallbackAuthMethod(tabId, credentials, resolve, reject);
           }
         });
@@ -157,50 +37,116 @@ async function fallbackAuthMethod(tabId, credentials, resolve, reject) {
       func: (login, password) => {
         console.log("Начало выполнения скрипта");
 
-        setTimeout(() => {
-          // Ищем форму и вводим данные
-          const usernameField = document.getElementById("username");
-          const passwordField = document.getElementById("password");
-          const submitButton = document.querySelector(
-            'button[data-uname="loginSigninmemberbutton"]'
-          );
+        tryingToLogInRecursive();
+        let maxCountOfLogIn = 100;
+        let countOfLogIn = 0;
+        function tryingToLogInRecursive() {
+          setTimeout(() => {
+            // Ищем форму и вводим данные
+            const usernameField = document.getElementById("username");
+            const passwordField = document.getElementById("password");
+            const submitButton = document.querySelector(
+              'button[data-uname="loginSigninmemberbutton"]'
+            );
 
-          console.log(
-            "Найденные элементы:",
-            usernameField,
-            passwordField,
-            submitButton
-          );
+            console.log(
+              "Найденные элементы:",
+              usernameField,
+              passwordField,
+              submitButton
+            );
 
-          if (usernameField && passwordField && submitButton) {
-            usernameField.value = login;
-            passwordField.value = password;
+            if (
+              usernameField &&
+              passwordField &&
+              submitButton &&
+              countOfLogIn <= maxCountOfLogIn
+            ) {
+              // Обезопашиваем форму ввода
+              hidePasswordToggle();
 
-            // Создаем и запускаем событие 'input'
-            const inputEvent = new Event("input", { bubbles: true });
-            usernameField.dispatchEvent(inputEvent);
-            passwordField.dispatchEvent(inputEvent);
+              usernameField.value = login;
+              passwordField.value = password;
 
-            // Также можно отправить событие 'change'
-            const changeEvent = new Event("change", { bubbles: true });
-            usernameField.dispatchEvent(changeEvent);
-            passwordField.dispatchEvent(changeEvent);
+              // Создаем и запускаем событие 'input'
+              const inputEvent = new Event("input", { bubbles: true });
+              usernameField.dispatchEvent(inputEvent);
+              passwordField.dispatchEvent(inputEvent);
 
-            submitButton.click();
-            console.log("Форма отправлена");
-          } else {
-            throw new Error("Не найдены поля формы авторизации");
-          }
+              // Также можно отправить событие 'change'
+              const changeEvent = new Event("change", { bubbles: true });
+              usernameField.dispatchEvent(changeEvent);
+              passwordField.dispatchEvent(changeEvent);
 
-          console.log("Поля заполнены и события отправлены");
-        }, 2000);
+              submitButton.click();
+              console.log("Форма отправлена");
+            } else {
+              countOfLogIn++;
+              console.log("Не загружена страница");
+              console.log("countOfLogIn: ", countOfLogIn);
+              tryingToLogInRecursive();
+            }
+            // Функция для скрытия кнопки показа пароля
+            function hidePasswordToggle() {
+              // Ищем все элементы, которые могут быть "глазиком"
+              const selectors = [
+                '[type="password"] + span',
+                ".password-toggle",
+                ".show-password",
+                '[class*="eye"]',
+                '[class*="visibility"]',
+                'button[aria-label*="password"]',
+                'button[title*="password"]',
+              ];
+
+              let passwordToggleFound = false;
+
+              selectors.forEach((selector) => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach((element) => {
+                  // Проверяем, находится ли элемент рядом с полем пароля
+                  const passwordInput = element
+                    .closest("form")
+                    ?.querySelector('input[type="password"]');
+                  if (passwordInput) {
+                    element.style.display = "none";
+                    element.style.visibility = "hidden";
+                    element.style.opacity = "0";
+                    element.setAttribute("data-hidden-by-extension", "true");
+                    passwordToggleFound = true;
+                    console.log("Скрыли элемент показа пароля:", element);
+                  }
+                });
+              });
+
+              // Дополнительная защита: делаем поле пароля readonly после заполнения
+              const passwordInput = document.querySelector(
+                'input[type="password"]'
+              );
+              if (passwordInput) {
+                passwordInput.addEventListener("input", function () {
+                  this.setAttribute("data-original-value", this.value);
+                });
+
+                // Запрещаем изменение пароля через интерфейс
+                passwordInput.addEventListener("keydown", function (e) {
+                  if (this.hasAttribute("data-original-value")) {
+                    e.preventDefault();
+                    this.value = this.getAttribute("data-original-value");
+                  }
+                });
+              }
+
+              return passwordToggleFound;
+            }
+          }, 100);
+        }
       },
       args: [credentials.login, credentials.password],
     });
 
     if (success) {
       setTimeout(() => {
-        console.log("удаляем вкладку");
         chrome.tabs.remove(tabId);
         resolve(true);
       }, 3000);
@@ -246,9 +192,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         if (!response.ok) {
           console.log("ошибка запроса");
         }
-      })
-      .then((data) => {
-        console.log(data);
       })
       .catch((error) => {
         console.error("Ошибка при выполнении GET-запроса:", error);

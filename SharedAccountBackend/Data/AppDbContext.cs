@@ -9,6 +9,7 @@ namespace SharedAccountBackend.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<CopartAction> CopartActions { get; set; }
+        public DbSet<SharedAccount> SharedAccounts { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

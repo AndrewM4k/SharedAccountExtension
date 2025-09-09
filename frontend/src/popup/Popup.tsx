@@ -11,23 +11,18 @@ const Popup = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState<Boolean | null>(null);
   const [error, setError] = useState<String | null>(null);
   const [userRole, setUserRole] = useState('');
 
   React.useEffect(()=>{
-    if(isLoggedIn){
+    if(isAuthorized != null && !isAuthorized){
       console.log("Start auth");
       chrome.runtime.sendMessage({ 
       action: 'authOnCopart' 
       });
     }
-    else{
-      console.log("Stop auth");
-      chrome.runtime.sendMessage({ 
-      action: 'logoutOnCopart' 
-      });      
-    }
-  },[isLoggedIn])
+  },[isAuthorized])
 
   const checkAuthStatus = async () => {
     try {
@@ -38,6 +33,7 @@ const Popup = () => {
         // 2. Получаем информацию о пользователе
         const userResponse = await apiService.me();
 
+        setIsAuthorized(true);
         setIsLoggedIn(true);
         setUserRole(userResponse.data.role);
         setUsername(userResponse.data.username);
@@ -68,15 +64,19 @@ const Popup = () => {
         console.log('Refresh token failed:', refreshError);
       }
     }
-
+    
     // Если все проверки не прошли
     setIsLoggedIn(false);
     setUserRole('');
+    console.log("logOut");
+    chrome.runtime.sendMessage({ 
+      action: 'logoutOnCopart' 
+    });   
   };
 
   React.useEffect(() => {
     setIsLoading(true);
-    checkAuthStatus();
+    if(!isLoggedIn){ checkAuthStatus();}
     setIsLoading(false);
   }, []);
 
@@ -89,6 +89,7 @@ const Popup = () => {
       const response = await apiService.login(username, password);
 
       if (response.status === 200) {
+        setIsAuthorized(false);
         // Получаем информацию о пользователе
         checkAuthStatus();
       }
@@ -118,7 +119,11 @@ const Popup = () => {
         {},
         { withCredentials: true }
       );
-
+      
+      console.log("logOut");
+      chrome.runtime.sendMessage({ 
+        action: 'logoutOnCopart' 
+      }); 
       setIsLoggedIn(false);
       setUserRole('');
     } catch (error) {

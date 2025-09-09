@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SharedAccountBackend.Data;
@@ -11,9 +12,11 @@ using SharedAccountBackend.Data;
 namespace SharedAccountBackend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250909093631_ActiveAccountField")]
+    partial class ActiveAccountField
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,30 +56,6 @@ namespace SharedAccountBackend.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("CopartActions");
-                });
-
-            modelBuilder.Entity("SharedAccountBackend.Models.SharedAccount", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CopartLogin")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("CopartPassword")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("SharedAccounts");
                 });
 
             modelBuilder.Entity("SharedAccountBackend.Models.User", b =>
