@@ -158,23 +158,57 @@ async function fallbackAuthMethod(tabId, credentials, resolve, reject) {
   }
 }
 
-// Функция ожидания загрузки вкладки
-function waitForTabLoad(tabId) {
-  return new Promise((resolve) => {
-    const listener = (tabIdUpdated, changeInfo) => {
-      if (tabIdUpdated === tabId && changeInfo.status === "complete") {
-        chrome.tabs.onUpdated.removeListener(listener);
-        resolve();
-      }
-    };
-    chrome.tabs.onUpdated.addListener(listener);
-  });
+async function authThroughBackend() {
+  try {
+    // Запрашиваем авторизацию на Copart через наш бэкенд
+    const response = await fetch("https://localhost:5001/api/CopartAuth/auth", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.ok) {
+      const authData = await response.json();
+
+      console.log("authData: ", authData);
+      // Сохраняем полученные куки в браузер
+      await setCookiesInBrowser(authData.cookies);
+
+      // Сохраняем UserAgent для последующих запросов
+      await chrome.storage.local.set({
+        copartUserAgent: authData.userAgent,
+      });
+
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("Ошибка авторизации через бэкенд:", error);
+    return false;
+  }
+}
+
+async function setCookiesInBrowser(cookies) {
+  for (const [name, value] of Object.entries(cookies)) {
+    await chrome.cookies.set({
+      url: "https://www.copart.com/",
+      name: name,
+      value: value,
+      domain: "www.copart.com",
+      path: "/",
+      secure: true,
+      httpOnly: true,
+      sameSite: "no_restriction",
+    });
+  }
 }
 
 // Обработчик сообщений от popup
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (request.action === "authOnCopart") {
-    const success = await authOnCopartThroughTab();
+    const success = await authThroughBackend();
     sendResponse({ success });
 
     if (success) {

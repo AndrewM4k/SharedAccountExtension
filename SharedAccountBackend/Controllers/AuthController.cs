@@ -241,14 +241,7 @@ namespace SharedAccountBackend.Controllers
         [Authorize]
         public IActionResult GetCurrentCredentials()
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var user = _db.Users.FirstOrDefault(u => u.Id == userId);
-
-            return Ok(new
-            {
-                user.Username,
-                user.Role
-            });
+            return Ok();
         }
 
     }

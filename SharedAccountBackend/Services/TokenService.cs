@@ -32,8 +32,6 @@ namespace SharedAccountBackend.Services
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                //issuer: _config["TokenSecretIssuer"],
-                //audience: _config["TokenSecretAudience"],
                 claims: claims,
                 expires: SettingConstants.AccessTokenExpire(), // Короткая жизнь
                 signingCredentials: creds);

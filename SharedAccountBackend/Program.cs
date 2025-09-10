@@ -70,6 +70,7 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
+            .WithExposedHeaders("X-XSRF-TOKEN", "Set-Cookie")
             .AllowCredentials()
             
         //.SetIsOriginAllowed(origin =>
@@ -83,8 +84,8 @@ builder.Services.AddHttpClient("CopartClient", client =>
     client.BaseAddress = new Uri("https://www.copart.com/");
     client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
     client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-    client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.5");
-    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
+    client.DefaultRequestHeaders.Add("Accept-Language", "ru,en;q=0.9,en-GB;q=0.8,en-US;q=0.7");
+    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br, zstd");
     client.DefaultRequestHeaders.Add("Connection", "keep-alive");
     client.DefaultRequestHeaders.Add("Upgrade-Insecure-Requests", "1");
 }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
