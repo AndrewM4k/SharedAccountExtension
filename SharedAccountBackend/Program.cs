@@ -1,4 +1,5 @@
 using System.Net;
+using System.Runtime.ConstrainedExecution;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -95,6 +96,7 @@ builder.Services.AddHttpClient("CopartClient", client =>
     AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
 });
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<SeleniumService>();
 builder.Services.AddSingleton<CryptoService>();
 builder.Services.AddSwaggerGen(c =>
     {
