@@ -5,6 +5,7 @@ import './Popup.css';
 import Alert from '../alert/Alert';
 import React from 'react';
 import * as apiService from '.././apiService';
+import { HttpError } from '@microsoft/signalr';
 
 const Popup = () => {
   const [username, setUsername] = useState('');
@@ -90,8 +91,31 @@ const Popup = () => {
 
       if (response.status === 200) {
         setIsAuthorized(false);
-        // Получаем информацию о пользователе
-        checkAuthStatus();
+        // Получаем информацию о пользователе и устанавливаем ее
+        try {
+          showStatus('Выполняется авторизация...');
+          
+          // Просто отправляем запрос в background script
+          const response = await chrome.runtime.sendMessage({
+              action: 'authAndSetCookies'
+          });
+          
+          if (response && response.success) {
+              showStatus('Авторизация успешна!');
+              
+              // Перенаправляем на Copart
+              setTimeout(() => {
+                  chrome.tabs.create({ url: 'https://www.copart.com' });
+                  window.close();
+              }, 1000);
+          } else {
+              showStatus('Ошибка: ' + (response?.error || 'Неизвестная ошибка'));
+          }
+        } catch (error:any) {
+            console.error('Ошибка:', error);
+            showStatus('Ошибка: ' + error.message);
+        }
+      checkAuthStatus();
       }
     } catch (err: any) {
       console.error('Full login error:', err);
@@ -112,6 +136,12 @@ const Popup = () => {
     }
   };
 
+  // Функция для отображения статуса
+  function showStatus(message: String) {
+    //document.getElementById('status').textContent = message;
+    console.log("message: ", message);
+  }
+
   const handleLogout = async () => {
     try {
       await axios.post(
@@ -122,7 +152,7 @@ const Popup = () => {
       
       console.log("logOut");
       chrome.runtime.sendMessage({ 
-        action: 'logoutOnCopart' 
+        action: 'clearCookies' 
       }); 
       setIsLoggedIn(false);
       setUserRole('');

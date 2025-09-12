@@ -45,10 +45,25 @@ namespace SharedAccountBackend.Controllers
                 if (cookies != null && cookies.Any())
                 {
                     _logger.LogInformation("Авторизация через Selenium успешна");
+
+                    // Формируем куки в формате для расширения
+                    var cookieObjects = cookies.Select(cookie => new
+                    {
+                        name = cookie.Key,
+                        value = cookie.Value,
+                        domain = ".copart.com",
+                        path = "/",
+                        secure = true,
+                        httpOnly = cookie.Key.Contains("SESSION") || cookie.Key.Contains("AUTH"), // Определяем HttpOnly на основе имени
+                        sameSite = "lax",
+                        expirationDate = DateTime.Now.AddHours(2).ToUniversalTime().Subtract(new DateTime(1970, 1, 1)).TotalSeconds
+                    }).ToList();
+
                     return Ok(new
                     {
                         Success = true,
-                        Cookies = cookies
+                        Cookies = cookieObjects,
+                        UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" // Передаем UserAgent для一致性
                     });
                 }
                 else

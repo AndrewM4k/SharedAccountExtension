@@ -7,6 +7,7 @@
     "default_title": "Shared Account"
   },
   "permissions": [
+    "cookies",
     "storage",
     "tabs",
     "scripting",
@@ -15,7 +16,8 @@
     "webRequest",
     "webRequestBlocking",
     "*://localhost/*",
-    "https://www.copart.com/*"
+    "https://www.copart.com/*",
+    "*://*.copart.com/*"
   ],
   "host_permissions": [
     "*://*.copart.com/*",

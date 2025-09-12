@@ -33,7 +33,7 @@ namespace SharedAccountBackend.Services
 
             // Установка времени ожидания по умолчанию
             _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
-            _driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
+            _driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(10);
         }
 
         public async Task<Dictionary<string, string>> LoginToCopart(string username, string password)
@@ -49,14 +49,14 @@ namespace SharedAccountBackend.Services
                 await WaitForPageLoad();
 
                 // Принимаем куки, если есть всплывающее окно
-                TryAcceptCookies();
+                //TryAcceptCookies();
 
                 // Заполняем форму логина
                 _logger.LogInformation("Заполнение формы логина");
 
-                var usernameField = WaitForElement(By.Name("username"), TimeSpan.FromSeconds(10));
-                var passwordField = WaitForElement(By.Name("password"), TimeSpan.FromSeconds(10));
-                var loginButton = WaitForElement(By.CssSelector("button[data-uname='loginSigninmemberbutton']"), TimeSpan.FromSeconds(10));
+                var usernameField = WaitForElement(By.Name("username"), TimeSpan.FromSeconds(5));
+                var passwordField = WaitForElement(By.Name("password"), TimeSpan.FromSeconds(5));
+                var loginButton = WaitForElement(By.CssSelector("button[data-uname='loginSigninmemberbutton']"), TimeSpan.FromSeconds(5));
 
                 usernameField.SendKeys(username);
                 passwordField.SendKeys(password);
@@ -69,7 +69,7 @@ namespace SharedAccountBackend.Services
 
                 // Ждем завершения авторизации
                 _logger.LogInformation("Ожидание завершения авторизации");
-                await WaitForNavigation(TimeSpan.FromSeconds(15));
+                await WaitForNavigation(TimeSpan.FromSeconds(5));
 
                 // Проверяем успешность авторизации
                 if (IsLoggedIn())
@@ -110,12 +110,12 @@ namespace SharedAccountBackend.Services
         private async Task WaitForPageLoad()
         {
             var jsExecutor = (IJavaScriptExecutor)_driver;
-            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(30));
+            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
 
             wait.Until(driver => jsExecutor.ExecuteScript("return document.readyState").Equals("complete"));
 
             // Дополнительная задержка для полной загрузки
-            await Task.Delay(2000);
+            await Task.Delay(500);
         }
 
         private async Task WaitForNavigation(TimeSpan timeout)
@@ -124,7 +124,7 @@ namespace SharedAccountBackend.Services
             wait.Until(driver => !driver.Url.Contains("login") || driver.Url.Contains("dashboard"));
 
             // Дополнительная задержка
-            await Task.Delay(3000);
+            await Task.Delay(500);
         }
 
         private bool IsLoggedIn()
@@ -179,7 +179,7 @@ namespace SharedAccountBackend.Services
                         {
                             button.Click();
                             _logger.LogInformation("Приняты куки");
-                            Task.Delay(1000).Wait();
+                            Task.Delay(500).Wait();
                             break;
                         }
                     }
@@ -214,6 +214,44 @@ namespace SharedAccountBackend.Services
         {
             _driver?.Quit();
             _driver?.Dispose();
+        }
+
+        private bool HandleLoginErrors()
+        {
+            try
+            {
+                // Проверяем наличие сообщений об ошибках
+                var errorSelectors = new[]
+                {
+            By.CssSelector(".error-message"),
+            By.CssSelector("[data-uname='loginError']"),
+            By.CssSelector(".alert-danger"),
+            By.XPath("//*[contains(text(), 'error') or contains(text(), 'invalid')]")
+        };
+
+                foreach (var selector in errorSelectors)
+                {
+                    try
+                    {
+                        var errorElement = _driver.FindElement(selector);
+                        if (errorElement.Displayed)
+                        {
+                            _logger.LogError($"Ошибка при входе: {errorElement.Text}");
+                            return false;
+                        }
+                    }
+                    catch
+                    {
+                        // Игнорируем, если элемент не найден
+                    }
+                }
+
+                return true;
+            }
+            catch
+            {
+                return true;
+            }
         }
     }
 }

@@ -1,248 +1,211 @@
-async function authOnCopartThroughTab() {
-  const credentials = {
-    login: "331271", // Заменить на запрос
-    password: "Kentucky$9598",
-  };
+class CookieService {
+  constructor() {
+    this.copartDomain = "https://www.copart.com";
+  }
 
-  return new Promise((resolve, reject) => {
-    // Создаем новую вкладку для авторизации
-    chrome.tabs.create(
-      {
-        url: "https://www.copart.com/login/",
-        active: false,
-      },
-      async (tab) => {
-        const tabId = tab.id;
-        chrome.tabs.onUpdated.addListener(function listener(
-          tabIdUpdated,
-          info
-        ) {
-          if (tabIdUpdated === tabId && info.status === "complete") {
-            chrome.tabs.onUpdated.removeListener(listener);
+  // Установка кук полученных с бэкенда
+  async setCookiesFromBackend(cookiesData) {
+    try {
+      console.log("Начало установки кук из бэкенда:", cookiesData);
 
-            fallbackAuthMethod(tabId, credentials, resolve, reject);
-          }
-        });
-      }
-    );
-  });
-}
-
-async function fallbackAuthMethod(tabId, credentials, resolve, reject) {
-  try {
-    // Вводим данные в форму
-    console.log("Вводим данные в форму");
-    const success = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: (login, password) => {
-        console.log("Начало выполнения скрипта");
-
-        tryingToLogInRecursive();
-        let maxCountOfLogIn = 100;
-        let countOfLogIn = 0;
-        function tryingToLogInRecursive() {
-          setTimeout(() => {
-            // Ищем форму и вводим данные
-            const usernameField = document.getElementById("username");
-            const passwordField = document.getElementById("password");
-            const submitButton = document.querySelector(
-              'button[data-uname="loginSigninmemberbutton"]'
-            );
-
-            console.log(
-              "Найденные элементы:",
-              usernameField,
-              passwordField,
-              submitButton
-            );
-
-            if (
-              usernameField &&
-              passwordField &&
-              submitButton &&
-              countOfLogIn <= maxCountOfLogIn
-            ) {
-              // Обезопашиваем форму ввода
-              hidePasswordToggle();
-
-              usernameField.value = login;
-              passwordField.value = password;
-
-              // Создаем и запускаем событие 'input'
-              const inputEvent = new Event("input", { bubbles: true });
-              usernameField.dispatchEvent(inputEvent);
-              passwordField.dispatchEvent(inputEvent);
-
-              // Также можно отправить событие 'change'
-              const changeEvent = new Event("change", { bubbles: true });
-              usernameField.dispatchEvent(changeEvent);
-              passwordField.dispatchEvent(changeEvent);
-
-              submitButton.click();
-              console.log("Форма отправлена");
-            } else {
-              countOfLogIn++;
-              console.log("Не загружена страница");
-              console.log("countOfLogIn: ", countOfLogIn);
-              tryingToLogInRecursive();
-            }
-            // Функция для скрытия кнопки показа пароля
-            function hidePasswordToggle() {
-              // Ищем все элементы, которые могут быть "глазиком"
-              const selectors = [
-                '[type="password"] + span',
-                ".password-toggle",
-                ".show-password",
-                '[class*="eye"]',
-                '[class*="visibility"]',
-                'button[aria-label*="password"]',
-                'button[title*="password"]',
-              ];
-
-              let passwordToggleFound = false;
-
-              selectors.forEach((selector) => {
-                const elements = document.querySelectorAll(selector);
-                elements.forEach((element) => {
-                  // Проверяем, находится ли элемент рядом с полем пароля
-                  const passwordInput = element
-                    .closest("form")
-                    ?.querySelector('input[type="password"]');
-                  if (passwordInput) {
-                    element.style.display = "none";
-                    element.style.visibility = "hidden";
-                    element.style.opacity = "0";
-                    element.setAttribute("data-hidden-by-extension", "true");
-                    passwordToggleFound = true;
-                    console.log("Скрыли элемент показа пароля:", element);
-                  }
-                });
-              });
-
-              // Дополнительная защита: делаем поле пароля readonly после заполнения
-              const passwordInput = document.querySelector(
-                'input[type="password"]'
-              );
-              if (passwordInput) {
-                passwordInput.addEventListener("input", function () {
-                  this.setAttribute("data-original-value", this.value);
-                });
-
-                // Запрещаем изменение пароля через интерфейс
-                passwordInput.addEventListener("keydown", function (e) {
-                  if (this.hasAttribute("data-original-value")) {
-                    e.preventDefault();
-                    this.value = this.getAttribute("data-original-value");
-                  }
-                });
-              }
-
-              return passwordToggleFound;
-            }
-          }, 100);
+      // Устанавливаем каждую куку отдельно
+      for (const cookieData of cookiesData) {
+        try {
+          await this.setBrowserCookie(cookieData);
+          console.log("Кука установлена:", cookieData.name);
+        } catch (error) {
+          console.error("Ошибка установки куки:", cookieData.name, error);
         }
-      },
-      args: [credentials.login, credentials.password],
-    });
+      }
 
-    if (success) {
-      setTimeout(() => {
-        chrome.tabs.remove(tabId);
-        resolve(true);
-      }, 3000);
-    } else {
-      reject(new Error("Не удалось найти форму авторизации"));
+      console.log("Все куки установлены успешно");
+      return true;
+    } catch (error) {
+      console.error("Ошибка при установке кук:", error);
+      return false;
     }
-  } catch (error) {
-    reject(error);
+  }
+
+  // Установка одной куки в браузер
+  async setBrowserCookie(cookieData) {
+    const cookieDetails = {
+      url: this.copartDomain,
+      name: cookieData.name,
+      value: cookieData.value,
+      domain: cookieData.domain || ".copart.com",
+      path: cookieData.path || "/",
+      secure: cookieData.secure !== false, // По умолчанию true
+      httpOnly: cookieData.httpOnly || false,
+      sameSite: cookieData.sameSite || "lax",
+      expirationDate:
+        cookieData.expirationDate || this.getDefaultExpirationDate(),
+    };
+
+    return new Promise((resolve, reject) => {
+      chrome.cookies.set(cookieDetails, (cookie) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else if (cookie) {
+          resolve(cookie);
+        } else {
+          reject(new Error("Не удалось установить куки"));
+        }
+      });
+    });
+  }
+
+  // Получение даты истечения срока действия (по умолчанию +2 часа)
+  getDefaultExpirationDate() {
+    return Math.floor((Date.now() + 2 * 60 * 60 * 1000) / 1000);
+  }
+
+  // Проверка установленных кук
+  async verifyCookies(cookieNames) {
+    const verifiedCookies = [];
+
+    for (const cookieName of cookieNames) {
+      const cookie = await this.getCookie(cookieName);
+      if (cookie) {
+        verifiedCookies.push(cookie);
+      }
+    }
+
+    return verifiedCookies;
+  }
+
+  // Получение конкретной куки
+  async getCookie(name) {
+    return new Promise((resolve) => {
+      chrome.cookies.get(
+        {
+          url: this.copartDomain,
+          name: name,
+        },
+        (cookie) => {
+          resolve(cookie);
+        }
+      );
+    });
+  }
+
+  // Получение всех кук для домена Copart
+  async getAllCopartCookies() {
+    return new Promise((resolve) => {
+      chrome.cookies.getAll(
+        {
+          domain: "copart.com",
+        },
+        (cookies) => {
+          resolve(cookies);
+        }
+      );
+    });
+  }
+
+  async clearAllCopartCookies() {
+    try {
+      console.log("Начало очистки кук Copart");
+
+      const cookies = await this.getAllCopartCookies();
+
+      for (const cookie of cookies) {
+        try {
+          await this.removeCookie(cookie.name, cookie.domain, cookie.path);
+          console.log("Кука удалена:", cookie.name);
+        } catch (error) {
+          console.error("Ошибка удаления куки:", cookie.name, error);
+        }
+      }
+
+      console.log("Очистка кук завершена");
+      return true;
+    } catch (error) {
+      console.error("Ошибка при очистке кук:", error);
+      return false;
+    }
+  }
+  // Удаление конкретной куки
+  async removeCookie(name, domain, path = "/") {
+    return new Promise((resolve) => {
+      chrome.cookies.remove(
+        {
+          url: `https://${domain}${path}`,
+          name: name,
+        },
+        (details) => {
+          resolve(details);
+        }
+      );
+    });
   }
 }
 
-async function authThroughBackend() {
+// Инициализация службы кук
+const cookieService = new CookieService();
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "authAndSetCookies") {
+    // Выполняем аутентификацию напрямую из background
+
+    console.log("Выполняем аутентификацию напрямую из background");
+    authenticateWithBackend()
+      .then((result) => sendResponse(result))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+
+    return true; // Указываем на асинхронный ответ
+  }
+
+  if (request.action === "clearCookies") {
+    cookieService.clearAllCopartCookies();
+    const response = fetch("https://www.copart.com/doLogout.html", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    response.then(console.log("Logout finished"));
+  }
+});
+
+async function authenticateWithBackend() {
   try {
-    // Запрашиваем авторизацию на Copart через наш бэкенд
-    const response = await fetch("https://localhost:5001/api/CopartAuth/auth", {
+    // Выполняем запрос к бэкенду
+    const response = await fetch("https://localhost:5001/api/copartAuth/auth", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
     });
 
-    if (response.ok) {
-      const authData = await response.json();
-
-      console.log("authData: ", authData);
-      // Сохраняем полученные куки в браузер
-      await setCookiesInBrowser(authData.cookies);
-
-      // Сохраняем UserAgent для последующих запросов
-      await chrome.storage.local.set({
-        copartUserAgent: authData.userAgent,
-      });
-
-      return true;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return false;
-  } catch (error) {
-    console.error("Ошибка авторизации через бэкенд:", error);
-    return false;
-  }
-}
+    const result = await response.json();
 
-async function setCookiesInBrowser(cookies) {
-  for (const [name, value] of Object.entries(cookies)) {
-    await chrome.cookies.set({
-      url: "https://www.copart.com/",
-      name: name,
-      value: value,
-      domain: "www.copart.com",
-      path: "/",
-      secure: true,
-      httpOnly: true,
-      sameSite: "no_restriction",
-    });
-  }
-}
+    if (result.success) {
+      console.log("Попытка очистки кук Copart");
+      // Удаляем куки
+      await cookieService.clearAllCopartCookies();
 
-// Обработчик сообщений от popup
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-  if (request.action === "authOnCopart") {
-    const success = await authThroughBackend();
-    sendResponse({ success });
+      // Устанавливаем куки
+      const success = await cookieService.setCookiesFromBackend(result.cookies);
 
-    if (success) {
-      // После успешной авторизации на Copart, активируем отслеживание
-      chrome.tabs.query({ url: "*://*.copart.com/*" }, (tabs) => {
-        tabs.forEach((tab) => {
-          chrome.tabs.sendMessage(tab.id, { action: "startTracking" });
-        });
-      });
-    }
-  }
-  if (request.action === "logoutOnCopart") {
-    fetch("https://www.copart.com/doLogout.html")
-      .then((response) => {
-        if (!response.ok) {
-          console.log("ошибка запроса");
+      if (success) {
+        // Сохраняем UserAgent
+        if (result.userAgent) {
+          await chrome.storage.local.set({ copartUserAgent: result.userAgent });
         }
-      })
-      .catch((error) => {
-        console.error("Ошибка при выполнении GET-запроса:", error);
-      });
-  }
-});
 
-// При обновлении вкладки проверяем, если это Copart и пользователь авторизован
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.url.includes("copart.com")) {
-    const { authToken } = await chrome.storage.local.get("authToken");
-
-    if (authToken) {
-      // Пользователь авторизован, активируем отслеживание
-      setTimeout(() => {
-        chrome.tabs.sendMessage(tabId, { action: "startTracking" });
-      }, 2000);
+        return { success: true };
+      } else {
+        return { success: false, error: "Не удалось установить куки" };
+      }
+    } else {
+      return { success: false, error: result.Message };
     }
+  } catch (error) {
+    console.error("Ошибка авторизации:", error);
+    return { success: false, error: error.message };
   }
-});
+}
