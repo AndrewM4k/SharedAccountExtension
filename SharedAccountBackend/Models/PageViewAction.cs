@@ -3,7 +3,7 @@
     public class PageViewAction
     {
         public int Id { get; set; }
-        public int UserId { get; set; }
+        public string UserId { get; set; }
         public string ActionType { get; set; }
         public string PageUrl { get; set; }
         public string PageTitle { get; set; }
