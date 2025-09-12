@@ -8,7 +8,8 @@ namespace SharedAccountBackend.Services
     {
         private readonly IWebDriver _driver;
         private readonly ILogger<SeleniumService> _logger;
-
+        private const int AllowedCountOfRetry = 5;
+        
         public SeleniumService(ILogger<SeleniumService> logger)
         {
             _logger = logger;
@@ -38,10 +39,41 @@ namespace SharedAccountBackend.Services
 
         public async Task<Dictionary<string, string>> LoginToCopart(string username, string password)
         {
-            try
+            for (int i = 0; i < AllowedCountOfRetry; i++)
             {
-                _logger.LogInformation("Начало авторизации на Copart через Selenium");
+                try
+                {
+                    _logger.LogInformation("Начало авторизации на Copart через Selenium");
 
+                    await SeleniumAuth();
+
+                    // Проверяем успешность авторизации
+                    if (IsLoggedIn())
+                    {
+                        _logger.LogInformation("Авторизация успешна");
+
+                        // Делаем скриншот после авторизации (для отладки)
+                        //TakeScreenshot("after_login");
+
+                        // Получаем все куки
+                        return GetCookies();
+                    }
+                    else
+                    {
+                        _logger.LogError("Авторизация не удалась");
+                        //TakeScreenshot("login_failed");
+                        continue;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ошибка при авторизации через Selenium");
+                    //TakeScreenshot("error");
+                }
+            }
+            return null;
+            async Task SeleniumAuth()
+            {
                 // Переходим на страницу логина
                 _driver.Navigate().GoToUrl("https://www.copart.com/login");
 
@@ -62,7 +94,7 @@ namespace SharedAccountBackend.Services
                 passwordField.SendKeys(password);
 
                 // Делаем скриншот перед отправкой формы (для отладки)
-                TakeScreenshot("before_login");
+                //TakeScreenshot("before_login");
 
                 // Нажимаем кнопку входа
                 loginButton.Click();
@@ -70,30 +102,6 @@ namespace SharedAccountBackend.Services
                 // Ждем завершения авторизации
                 _logger.LogInformation("Ожидание завершения авторизации");
                 await WaitForNavigation(TimeSpan.FromSeconds(5));
-
-                // Проверяем успешность авторизации
-                if (IsLoggedIn())
-                {
-                    _logger.LogInformation("Авторизация успешна");
-
-                    // Делаем скриншот после авторизации (для отладки)
-                    TakeScreenshot("after_login");
-
-                    // Получаем все куки
-                    return GetCookies();
-                }
-                else
-                {
-                    _logger.LogError("Авторизация не удалась");
-                    TakeScreenshot("login_failed");
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при авторизации через Selenium");
-                TakeScreenshot("error");
-                return null;
             }
         }
 

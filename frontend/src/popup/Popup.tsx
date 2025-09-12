@@ -50,7 +50,7 @@ const Popup = () => {
         if (refreshResponse.status === 200) {
           // Повторяем проверку после обновления
           const recheckResponse = await apiService.check();
-          console.log('стату собновленяи токенов: ', recheckResponse.status);
+          console.log('статус собновления токенов: ', recheckResponse.status);
 
           if (recheckResponse.status === 200) {
             const userResponse = await apiService.me();
