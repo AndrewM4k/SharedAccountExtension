@@ -214,104 +214,76 @@ async function authenticateWithBackend() {
 
 //#region Events
 
-class EventService {
-  constructor() {
-    this.eventQueue = [];
-    this.retryAttempts = 3;
-    this.init();
-  }
+// Слушаем сообщения от content script
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  if (request.type === "BID_PLACED") {
+    console.log("Bid message received in background:", request.data);
 
-  init() {
-    // Обработчик сообщений от content script
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.action === "trackEvent") {
-        this.addToQueue(message.data);
-        sendResponse({ success: true });
-      }
-      return true;
+    // Добавляем userId к данным ставки
+    const payload = {
+      actionType: request.data.actionType ? request.data.actionType : "",
+      lotNumber: request.data.lotNumber ? request.data.lotNumber : "",
+      details: request.data.details ? request.data.details : "",
+      timestamp: request.data.timestamp ? request.data.timestamp : "",
+      url: request.data.url ? request.data.url : "",
+      bidAmount: request.data.bidAmount ? request.data.bidAmount : "",
+      action: request.data.action ? request.data.action : "",
+      lotName: request.data.lotName ? request.data.lotName : "",
+      userBidAmount: request.data.userBidAmount
+        ? request.data.userBidAmount
+        : "",
+      pageUrl: request.data.pageUrl ? request.data.pageUrl : "",
+      pageTitle: request.data.pageTitle ? request.data.pageTitle : "",
+      referrer: request.data.referrer ? request.data.referrer : "",
+      elementText: request.data.elementText ? request.data.elementText : "",
+      elementClasses: request.data.elementClasses
+        ? request.data.elementClasses
+        : "",
+      userEmail: request.data.userEmail ? request.data.userEmail : "",
+      extensionVersion: request.data.extensionVersion
+        ? request.data.extensionVersion
+        : "",
+    };
+
+    console.log("payload: ", payload);
+
+    // Отправляем данные на ваш бэкенд
+
+    const response = await fetch("https://localhost:5001/api/actions/add", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
-    // Периодическая отправка событий
-    setInterval(() => {
-      this.processQueue();
-    }, 10000); // Отправляем каждые 10 секунд
+    console.log("response: ", response);
 
-    // Обработчик перед закрытием страницы
-    chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
-      this.processQueue(); // Пытаемся отправить оставшиеся события
-    });
+    // fetch("https://localhost:5001/api/actions/add", {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    //   body: JSON.stringify(payload),
+    // })
+    //   .then((response) => {
+    //     if (!response.ok) {
+    //       console.log("response: ", response);
+    //       throw new Error("Network response was not ok");
+    //     }
+    //     return response.json();
+    //   })
+    //   .then((data) => {
+    //     console.log("Successfully saved bid to DB:", data);
+    //     sendResponse({ status: "success", data: data });
+    //   })
+    //   .catch((error) => {
+    //     console.error("Error saving bid to DB:", error);
+    //     sendResponse({ status: "error", message: error.message });
+    //   });
+    // Возвращаем true для асинхронного ответа (sendResponse будет вызван позже)
+    return true;
   }
-
-  addToQueue(eventData) {
-    // Добавляем информацию о пользователе
-    chrome.storage.local.get(["user", "authToken"], (data) => {
-      const enhancedEvent = {
-        ...eventData,
-        userId: data.user ? data.user.id : "unknown",
-        userEmail: data.user ? data.user.email : "unknown",
-        extensionVersion: chrome.runtime.getManifest().version,
-      };
-
-      this.eventQueue.push(enhancedEvent);
-
-      // Если очередь становится большой, отправляем сразу
-      if (this.eventQueue.length >= 20) {
-        this.processQueue();
-      }
-    });
-  }
-
-  async processQueue() {
-    if (this.eventQueue.length === 0) return;
-
-    const eventsToSend = [...this.eventQueue];
-    this.eventQueue = []; // Очищаем очередь
-
-    try {
-      const { authToken } = await new Promise((resolve) => {
-        chrome.storage.local.get(["authToken"], resolve);
-      });
-
-      if (!authToken) {
-        console.warn("No auth token available, skipping event send");
-        this.eventQueue = [...eventsToSend, ...this.eventQueue];
-        return;
-      }
-
-      const response = await fetch("https://localhost:5001/api/Actions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ events: eventsToSend }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      console.log(`Successfully sent ${eventsToSend.length} events`);
-    } catch (error) {
-      console.error("Failed to send events:", error);
-
-      // Возвращаем события в очередь для повторной попытки
-      this.eventQueue = [...eventsToSend, ...this.eventQueue];
-
-      // Уменьшаем количество попыток для этих событий
-      eventsToSend.forEach((event) => {
-        event.retryCount = (event.retryCount || 0) + 1;
-      });
-
-      // Удаляем события, которые превысили лимит попыток
-      this.eventQueue = this.eventQueue.filter(
-        (event) => (event.retryCount || 0) < this.retryAttempts
-      );
-    }
-  }
-}
-
-// Инициализация сервиса событий
-const eventService = new EventService();
+});
 
 //#endregion

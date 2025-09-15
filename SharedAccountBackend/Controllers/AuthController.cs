@@ -236,13 +236,5 @@ namespace SharedAccountBackend.Controllers
                 user.Role
             });
         }
-
-        [HttpGet("currentCredentials")]
-        [Authorize]
-        public IActionResult GetCurrentCredentials()
-        {
-            return Ok();
-        }
-
     }
 }

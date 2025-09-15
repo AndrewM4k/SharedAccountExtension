@@ -66,6 +66,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "chrome-extension://imambnhajobfgoahcheibndblofimcof", // Ваш ID расширения
+                "chrome-extension://gomflnllnhfmojochmdhldmdiglhobej", // Ваш ID расширения
                 "https://localhost:5001",
                 "http://localhost:5000"
             )

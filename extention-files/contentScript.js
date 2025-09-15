@@ -137,298 +137,79 @@
 
 // contentScript.js
 
-class ActionTracker {
-  constructor() {
-    this.isActive = true; // Всегда активно
-    this.observer = null;
-    this.init();
-  }
+// Функция для отправки сообщения в background script
 
-  init() {
-    console.log("ActionTracker initialized - tracking is always active");
-    this.startTracking();
-
-    // Слушаем сообщения (на будущее, если добавим управление)
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message.action === "forceEventSend") {
-        this.sendAllEvents();
-      }
-    });
-  }
-
-  startTracking() {
-    if (!this.isActive) return;
-
-    console.log("Starting to track user actions");
-    this.trackBidActions();
-    this.trackPageViews();
-    this.trackNavigation();
-    this.trackImportantClicks();
-  }
-
-  trackBidActions() {
-    // Отслеживание кнопок ставок
-    this.setupObserverForBidButtons();
-
-    // Также отслеживаем существующие кнопки
-    this.addListenersToExistingButtons();
-  }
-
-  setupObserverForBidButtons() {
-    // Наблюдатель для динамически добавляемых кнопок
-    this.observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.addedNodes.length > 0) {
-          this.addListenersToNewButtons(mutation.addedNodes);
-        }
-      });
-    });
-
-    this.observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-  }
-
-  addListenersToExistingButtons() {
-    const bidButtons = this.findBidButtons();
-    bidButtons.forEach((button) => {
-      button.addEventListener("click", this.handleBidClick.bind(this));
-    });
-  }
-
-  addListenersToNewButtons(nodes) {
-    nodes.forEach((node) => {
-      if (node.nodeType === 1) {
-        // Element node
-        const newBidButtons = node.querySelectorAll
-          ? this.findBidButtons(node)
-          : [];
-
-        newBidButtons.forEach((button) => {
-          button.addEventListener("click", this.handleBidClick.bind(this));
-        });
-      }
-    });
-  }
-
-  findBidButtons(root = document) {
-    // Ищем кнопки ставок по различным селекторам
-    // Базовые CSS-селекторы
-    const baseSelectors = [
-      '[data-uname="bidButton"]',
-      ".bid-button",
-      '[class*="bid"]',
-      '[aria-label*="bid"]',
-      '[aria-label*="ставка"]',
-      '[data-testid*="bid"]',
-      '[id*="bid"]',
-    ];
-
-    // Поиск по селекторам
-    const buttons = root.querySelectorAll(baseSelectors.join(","));
-
-    // Дополнительная фильтрация по тексту для кнопок без четких селекторов
-    const allButtons = root.querySelectorAll("button");
-    const textFilteredButtons = Array.from(allButtons).filter((button) => {
-      const text = button.textContent.toLowerCase();
-      return (
-        text.includes("bid") ||
-        text.includes("ставк") ||
-        text.includes("place bid") ||
-        text.includes("сделать ставку")
-      );
-    });
-
-    // Объединение результатов
-    return [...buttons, ...textFilteredButtons];
-  }
-
-  trackPageViews() {
-    // Отслеживание просмотров страниц
-    this.trackPageView();
-
-    // Также отслеживаем изменения URL (для SPA)
-    let lastUrl = location.href;
-    new MutationObserver(() => {
-      const url = location.href;
-      if (url !== lastUrl) {
-        lastUrl = url;
-        this.trackPageView();
-      }
-    }).observe(document, { subtree: true, childList: true });
-  }
-
-  trackNavigation() {
-    // Отслеживание навигации
-    window.addEventListener("beforeunload", this.handlePageUnload.bind(this));
-  }
-
-  trackImportantClicks() {
-    // Отслеживание других важных кликов
-    document.addEventListener(
-      "click",
-      this.handleImportantClick.bind(this),
-      true
-    );
-  }
-
-  handleBidClick(event) {
-    if (!this.isActive) return;
-
-    const button = event.target.closest("button");
-    if (!button) return;
-
-    // Получаем информацию о лоте
-    const lotData = this.extractLotData();
-    const bidData = this.extractBidData(button);
-
-    // Формируем данные события
-    const eventData = {
-      type: "BID_ACTION",
-      action: "BID_CLICK",
-      timestamp: new Date().toISOString(),
-      lotNumber: lotData.lotNumber,
-      lotName: lotData.lotName,
-      bidAmount: bidData.bidAmount,
-      userBidAmount: bidData.userBidAmount,
-      pageUrl: window.location.href,
-      elementText: button.textContent.trim(),
-      elementClasses: button.className,
-    };
-
-    // Отправляем данные в background script
-    this.sendEventToBackground(eventData);
-  }
-
-  handleImportantClick(event) {
-    if (!this.isActive) return;
-
-    const target = event.target;
-    const isImportant = this.isImportantClick(target);
-
-    if (isImportant) {
-      const eventData = {
-        type: "IMPORTANT_CLICK",
-        action: "CLICK",
-        timestamp: new Date().toISOString(),
-        pageUrl: window.location.href,
-        elementTag: target.tagName,
-        elementText: target.textContent.trim().substring(0, 100),
-        elementClasses: target.className,
-        elementId: target.id || "none",
-      };
-
-      this.sendEventToBackground(eventData);
+function sendBidDataToBackground(bidData) {
+  chrome.runtime.sendMessage(
+    {
+      type: "BID_PLACED",
+      data: bidData,
+    },
+    (response) => {
+      console.log("Response from background:", response);
     }
-  }
-
-  isImportantClick(element) {
-    // Определяем, является ли клик важным
-    const importantSelectors = [
-      'a[href*="makeBid"]',
-      'a[href*="bid"]',
-      'a[href*="ставк"]',
-      ".important-button",
-      '[data-important="true"]',
-      ".buy-now",
-      ".place-bid",
-      ".watchlist",
-    ];
-
-    return importantSelectors.some((selector) => element.matches(selector));
-  }
-
-  trackPageView() {
-    const eventData = {
-      type: "PAGE_VIEW",
-      timestamp: new Date().toISOString(),
-      pageUrl: window.location.href,
-      pageTitle: document.title,
-      referrer: document.referrer,
-    };
-
-    this.sendEventToBackground(eventData);
-  }
-
-  handlePageUnload() {
-    const eventData = {
-      type: "PAGE_UNLOAD",
-      timestamp: new Date().toISOString(),
-      pageUrl: window.location.href,
-    };
-
-    // Используем sendBeacon для надежной отправки при закрытии страницы
-    if (navigator.sendBeacon) {
-      console.log("Sending data...");
-      const blob = new Blob([JSON.stringify(eventData)], {
-        type: "application/json",
-      });
-      navigator.sendBeacon("https://localhost:5001/api/Actions", blob);
-    } else {
-      this.sendEventToBackground(eventData);
-    }
-  }
-
-  sendEventToBackground(eventData) {
-    chrome.runtime.sendMessage(
-      {
-        action: "trackEvent",
-        data: eventData,
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          console.warn(
-            "Could not send event to background:",
-            chrome.runtime.lastError
-          );
-        }
-      }
-    );
-  }
-
-  sendAllEvents() {
-    // Метод для принудительной отправки всех событий
-    // Пока не реализовано накопление событий, но можно добавить
-    console.log("Force send events called");
-  }
-
-  extractLotData() {
-    // Извлекаем данные о лоте (адаптируйте под структуру Copart)
-    try {
-      const lotNumberElem = document.querySelector('[data-uname="lotNumber"]');
-      const lotNameElem = document.querySelector("h1");
-      const vinElem = document.querySelector('[data-uname="lotVIN"]');
-
-      return {
-        lotNumber: lotNumberElem ? lotNumberElem.textContent.trim() : "Unknown",
-        lotName: lotNameElem ? lotNameElem.textContent.trim() : "Unknown",
-        vin: vinElem ? vinElem.textContent.trim() : "Unknown",
-      };
-    } catch (error) {
-      console.error("Error extracting lot data:", error);
-      return { lotNumber: "Error", lotName: "Error", vin: "Error" };
-    }
-  }
-
-  extractBidData(button) {
-    // Извлекаем данные о ставке
-    try {
-      const bidAmountElem = document.querySelector('[data-uname="currentBid"]');
-      const userBidInput = document.querySelector(
-        'input[type="number"], input[name="bidAmount"]'
-      );
-
-      return {
-        bidAmount: bidAmountElem ? bidAmountElem.textContent.trim() : "Unknown",
-        userBidAmount: userBidInput ? userBidInput.value : "Unknown",
-      };
-    } catch (error) {
-      console.error("Error extracting bid data:", error);
-      return { bidAmount: "Error", userBidAmount: "Error" };
-    }
-  }
+  );
 }
 
-// Инициализация трекера
-new ActionTracker();
+// Слушаем клики по всей странице (делегирование событий)
+document.addEventListener("click", function (event) {
+  // 1. Определяем цель клика
+  const target = event.target;
+
+  console.log("Clicked: ", target);
+  // 2. Поиск кнопки ставки (ЭТО ПРИМЕР, НУЖНО УТОЧНИТЬ НА САЙТЕ!)
+  // Это самый сложный момент. Селектор нужно подобрать точно для кнопки на Copart.
+  // Это может быть id, класс, data-атрибут или текст кнопки.
+  // Пример: если кнопка имеет класс "bid-button"
+  if (target.closest(".bid-button")) {
+    // 3. Собираем данные (их тоже нужно извлечь со страницы)
+    const lotNumber =
+      document.querySelector(".lot-number")?.innerText || "unknown";
+    const bidAmount = document.querySelector(".bid-amount")?.value || "unknown";
+
+    const bidData = {
+      lotNumber: lotNumber,
+      bidAmount: bidAmount,
+      timestamp: new Date().toISOString(),
+      // userId будет добавлен в background.js из хранилища
+    };
+
+    console.log("Bid button clicked, data:", bidData);
+    sendBidDataToBackground(bidData);
+  }
+
+  if (
+    target.matches(
+      'a[aria-controls="serverSideDataTable_mylots"][data-dt-idx="0"]'
+    )
+  ) {
+    // 3. Собираем данные (их тоже нужно извлечь со страницы)
+
+    const bidData = {
+      actionType: "BID_ACTION",
+      action: "Click_Button",
+      lotNumber: "lotNumber",
+      bidAmount: "bidAmount",
+      pageUrl: "https://www.copart.com/",
+      timestamp: new Date().toISOString(),
+      details: "string",
+      lotName: "string",
+      userBidAmount: "string",
+      pageTitle: "string",
+      referrer: "string",
+      elementText: "string",
+      elementClasses: "string",
+      userEmail: "string",
+      extensionVersion: "string",
+    };
+
+    console.log("Bid button clicked, data:", bidData);
+    sendBidDataToBackground(bidData);
+  }
+
+  // Добавьте здесь другие условия для отслеживания других важных кнопок
+  // if (target.closest('.another-important-button')) { ... }
+});
+
+// Также можно отслеживать изменения в полях ввода, формы и т.д.
+console.log("Content script loaded and ready on Copart.");

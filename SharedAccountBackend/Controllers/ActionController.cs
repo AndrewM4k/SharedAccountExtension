@@ -9,7 +9,7 @@ using System.Security.Claims;
 namespace SharedAccountBackend.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/actions")]
     [Authorize]
     public class ActionsController : ControllerBase
     {
@@ -70,8 +70,8 @@ namespace SharedAccountBackend.Controllers
             return Ok(actions);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> ReceiveActions([FromBody] ActionCollectionDto eventCollection)
+        [HttpPost("add")]
+        public async Task<IActionResult> ReceiveActions([FromBody] ActionDto action)
         {
             try
             {
@@ -82,17 +82,18 @@ namespace SharedAccountBackend.Controllers
                     return Unauthorized();
                 }
 
-                foreach (var eventDto in eventCollection.Actions)
-                {
-                    await ProcessEvent(userId, eventDto);
-                }
+                await ProcessEvent(userId, action);
+                //foreach (var eventDto in eventCollection.Actions)
+                //{
+                //    await ProcessEvent(userId, eventDto);
+                //}
 
                 await _context.SaveChangesAsync();
 
                 // Удаление старья
                 //await CleanOldEvents();
 
-                return Ok(new { Success = true, Received = eventCollection.Actions.Count });
+                return Ok(new { Success = true });
             }
             catch (Exception ex)
             {
@@ -100,6 +101,38 @@ namespace SharedAccountBackend.Controllers
                 return StatusCode(500, new { Success = false, Message = ex.Message });
             }
         }
+
+
+        //[HttpPost]
+        //public async Task<IActionResult> ReceiveActions([FromBody] ActionCollectionDto eventCollection)
+        //{
+        //    try
+        //    {
+        //        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            //        if (string.IsNullOrEmpty(userId))
+            //        {
+            //            return Unauthorized();
+            //        }
+
+            //        foreach (var eventDto in eventCollection.Actions)
+            //        {
+            //            await ProcessEvent(userId, eventDto);
+            //        }
+
+            //        await _context.SaveChangesAsync();
+
+            //        // Удаление старья
+            //        //await CleanOldEvents();
+
+            //        return Ok(new { Success = true, Received = eventCollection.Actions.Count });
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        _logger.LogError(ex, "Error processing events");
+            //        return StatusCode(500, new { Success = false, Message = ex.Message });
+            //    }
+            //}
 
         private async Task ProcessEvent(string userId, ActionDto eventDto)
         {
@@ -113,10 +146,11 @@ namespace SharedAccountBackend.Controllers
                         Action = eventDto.Action,
                         LotNumber = eventDto.LotNumber,
                         LotName = eventDto.LotName,
+                        Details = eventDto.Details,
                         BidAmount = eventDto.BidAmount,
                         UserBidAmount = eventDto.UserBidAmount,
                         PageUrl = eventDto.PageUrl,
-                        ActionTime = DateTime.Parse(eventDto.Timestamp),
+                        ActionTime = TimeZoneInfo.ConvertTimeToUtc(DateTime.Parse(eventDto.Timestamp)),
                         CreatedAt = DateTime.UtcNow
                     };
                     await _context.CopartActions.AddAsync(bidEvent);
@@ -130,7 +164,7 @@ namespace SharedAccountBackend.Controllers
                         PageUrl = eventDto.PageUrl,
                         PageTitle = eventDto.PageTitle,
                         Referrer = eventDto.Referrer,
-                        Timestamp = DateTime.Parse(eventDto.Timestamp),
+                        Timestamp = TimeZoneInfo.ConvertTimeToUtc(DateTime.Parse(eventDto.Timestamp)),
                         CreatedAt = DateTime.UtcNow
                     };
                     await _context.PageViewActions.AddAsync(pageViewEvent);

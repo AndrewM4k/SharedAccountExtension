@@ -16,7 +16,6 @@
         public string Referrer { get; set; }
         public string ElementText { get; set; }
         public string ElementClasses { get; set; }
-        public string UserId { get; set; }
         public string UserEmail { get; set; }
         public string ExtensionVersion { get; set; }
     }
