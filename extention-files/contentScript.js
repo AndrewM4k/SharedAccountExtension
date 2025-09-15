@@ -42,188 +42,144 @@
 //   }
 // });
 // contentScript.js
-let trackingEnabled = false;
+//let trackingEnabled = false;
 
 // Обработчик сообщений от background script
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "startTracking") {
-    console.log("startTracking");
-    enableTracking();
-    sendResponse({ success: true });
-  }
-});
+// chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+//   if (request.action === "startTracking") {
+//     console.log("startTracking");
+//     enableTracking();
+//     sendResponse({ success: true });
+//   }
+// });
 
-function enableTracking() {
-  if (trackingEnabled) return;
-  trackingEnabled = true;
+// function enableTracking() {
+//   if (trackingEnabled) return;
+//   trackingEnabled = true;
 
-  console.log("Активация отслеживания на Copart");
+//   console.log("Активация отслеживания на Copart");
 
-  // Начинаем наблюдение за изменениями на странице
-  const observer = new MutationObserver(checkForBids);
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    characterData: true,
-  });
+//   // Начинаем наблюдение за изменениями на странице
+//   const observer = new MutationObserver(checkForBids);
+//   observer.observe(document.body, {
+//     childList: true,
+//     subtree: true,
+//     attributes: true,
+//     characterData: true,
+//   });
 
-  // Также проверяем периодически
-  setInterval(checkForBids, 3000);
-}
+//   // Также проверяем периодически
+//   setInterval(checkForBids, 3000);
+// }
 
-function checkForBids() {
-  // Ищем элементы, связанные со ставками
-  const bidButtons = document.querySelectorAll('[class*="bid"], [id*="bid"]');
+// function checkForBids() {
+//   // Ищем элементы, связанные со ставками
+//   const bidButtons = document.querySelectorAll('[class*="bid"], [id*="bid"]');
 
-  bidButtons.forEach((button) => {
-    if (!button.hasAttribute("data-tracked")) {
-      button.setAttribute("data-tracked", "true");
-      button.addEventListener("click", trackBid);
-    }
-  });
-}
+//   bidButtons.forEach((button) => {
+//     if (!button.hasAttribute("data-tracked")) {
+//       button.setAttribute("data-tracked", "true");
+//       button.addEventListener("click", trackBid);
+//     }
+//   });
+// }
 
-async function trackBid(event) {
-  // Получаем данные о лоте
-  const lotData = extractLotData();
+// async function trackBid(event) {
+//   // Получаем данные о лоте
+//   const lotData = extractLotData();
 
-  if (!lotData) return;
+//   if (!lotData) return;
 
-  // Получаем информацию о пользователе
-  const userInfo = await getUserInfo();
+//   // Получаем информацию о пользователе
+//   const userInfo = await getUserInfo();
 
-  // Формируем данные для отправки
-  const bidData = {
-    userId: userInfo.id,
-    userEmail: userInfo.email,
-    lotNumber: lotData.lotNumber,
-    lotName: lotData.lotName,
-    bidAmount: lotData.bidAmount,
-    bidTime: new Date().toISOString(),
-    pageUrl: window.location.href,
-  };
+//   // Формируем данные для отправки
+//   const bidData = {
+//     userId: userInfo.id,
+//     userEmail: userInfo.email,
+//     lotNumber: lotData.lotNumber,
+//     lotName: lotData.lotName,
+//     bidAmount: lotData.bidAmount,
+//     bidTime: new Date().toISOString(),
+//     pageUrl: window.location.href,
+//   };
 
-  console.log("Отслежена ставка:", bidData);
+//   console.log("Отслежена ставка:", bidData);
 
-  // Отправляем данные в background script
-  chrome.runtime.sendMessage({
-    action: "trackBid",
-    data: bidData,
-  });
-}
+//   // Отправляем данные в background script
+//   chrome.runtime.sendMessage({
+//     action: "trackBid",
+//     data: bidData,
+//   });
+// }
 
-function extractLotData() {
-  // Парсим страницу для извлечения данных о лоте
-  // Эти селекторы可能需要 адаптировать под актуальную структуру сайта Copart
-  const lotNumberElem = document.querySelector('[data-uname="lotNumber"]');
-  const lotNameElem = document.querySelector("h1");
-  const bidAmountElem = document.querySelector('[data-uname="currentBid"]');
+// function extractLotData() {
+//   // Парсим страницу для извлечения данных о лоте
+//   // Эти селекторы可能需要 адаптировать под актуальную структуру сайта Copart
+//   const lotNumberElem = document.querySelector('[data-uname="lotNumber"]');
+//   const lotNameElem = document.querySelector("h1");
+//   const bidAmountElem = document.querySelector('[data-uname="currentBid"]');
 
-  if (!lotNumberElem) return null;
+//   if (!lotNumberElem) return null;
 
-  return {
-    lotNumber: lotNumberElem.textContent.trim(),
-    lotName: lotNameElem ? lotNameElem.textContent.trim() : "Неизвестно",
-    bidAmount: bidAmountElem ? bidAmountElem.textContent.trim() : "Неизвестно",
-  };
-}
+//   return {
+//     lotNumber: lotNumberElem.textContent.trim(),
+//     lotName: lotNameElem ? lotNameElem.textContent.trim() : "Неизвестно",
+//     bidAmount: bidAmountElem ? bidAmountElem.textContent.trim() : "Неизвестно",
+//   };
+// }
 
-async function getUserInfo() {
-  // Получаем информацию о пользователе из storage
-  const { user } = await chrome.storage.local.get("user");
-  return user || { id: "unknown", email: "unknown" };
-}
+// async function getUserInfo() {
+//   // Получаем информацию о пользователе из storage
+//   const { user } = await chrome.storage.local.get("user");
+//   return user || { id: "unknown", email: "unknown" };
+// }
+
+// contentScript.js
 
 class ActionTracker {
   constructor() {
-    this.isTracking = false;
+    this.isActive = true; // Всегда активно
     this.observer = null;
     this.init();
   }
 
   init() {
-    // Слушаем сообщения от background script
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.action === "startTracking") {
-        this.startTracking();
-        sendResponse({ success: true });
-      } else if (message.action === "stopTracking") {
-        this.stopTracking();
-        sendResponse({ success: true });
-      } else if (message.action === "getTrackingStatus") {
-        sendResponse({ isTracking: this.isTracking });
-      }
-      return true;
-    });
+    console.log("ActionTracker initialized - tracking is always active");
+    this.startTracking();
 
-    // Проверяем статус трекинга при загрузке
-    chrome.runtime.sendMessage({ action: "getTrackingStatus" }, (response) => {
-      if (response && response.isTracking) {
-        this.startTracking();
+    // Слушаем сообщения (на будущее, если добавим управление)
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.action === "forceEventSend") {
+        this.sendAllEvents();
       }
     });
   }
 
   startTracking() {
-    if (this.isTracking) return;
+    if (!this.isActive) return;
 
-    this.isTracking = true;
-    console.log("Tracking started");
-
-    // Начинаем отслеживание действий
+    console.log("Starting to track user actions");
     this.trackBidActions();
     this.trackPageViews();
     this.trackNavigation();
-  }
-
-  stopTracking() {
-    if (!this.isTracking) return;
-
-    this.isTracking = false;
-    console.log("Tracking stopped");
-
-    // Останавливаем отслеживание
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-    }
-
-    // Удаляем все обработчики событий
-    this.removeEventListeners();
+    this.trackImportantClicks();
   }
 
   trackBidActions() {
     // Отслеживание кнопок ставок
-    const bidButtons = document.querySelectorAll(
-      '[data-uname="bidButton"], .bid-button, [class*="bid"]'
-    );
+    this.setupObserverForBidButtons();
 
-    bidButtons.forEach((button) => {
-      button.addEventListener("click", this.handleBidClick.bind(this));
-    });
+    // Также отслеживаем существующие кнопки
+    this.addListenersToExistingButtons();
+  }
 
+  setupObserverForBidButtons() {
     // Наблюдатель для динамически добавляемых кнопок
     this.observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.addedNodes.length > 0) {
-          mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === 1) {
-              // Element node
-              const newBidButtons = node.querySelectorAll
-                ? node.querySelectorAll(
-                    '[data-uname="bidButton"], .bid-button, [class*="bid"]'
-                  )
-                : [];
-
-              newBidButtons.forEach((button) => {
-                button.addEventListener(
-                  "click",
-                  this.handleBidClick.bind(this)
-                );
-              });
-            }
-          });
+          this.addListenersToNewButtons(mutation.addedNodes);
         }
       });
     });
@@ -232,6 +188,60 @@ class ActionTracker {
       childList: true,
       subtree: true,
     });
+  }
+
+  addListenersToExistingButtons() {
+    const bidButtons = this.findBidButtons();
+    bidButtons.forEach((button) => {
+      button.addEventListener("click", this.handleBidClick.bind(this));
+    });
+  }
+
+  addListenersToNewButtons(nodes) {
+    nodes.forEach((node) => {
+      if (node.nodeType === 1) {
+        // Element node
+        const newBidButtons = node.querySelectorAll
+          ? this.findBidButtons(node)
+          : [];
+
+        newBidButtons.forEach((button) => {
+          button.addEventListener("click", this.handleBidClick.bind(this));
+        });
+      }
+    });
+  }
+
+  findBidButtons(root = document) {
+    // Ищем кнопки ставок по различным селекторам
+    // Базовые CSS-селекторы
+    const baseSelectors = [
+      '[data-uname="bidButton"]',
+      ".bid-button",
+      '[class*="bid"]',
+      '[aria-label*="bid"]',
+      '[aria-label*="ставка"]',
+      '[data-testid*="bid"]',
+      '[id*="bid"]',
+    ];
+
+    // Поиск по селекторам
+    const buttons = root.querySelectorAll(baseSelectors.join(","));
+
+    // Дополнительная фильтрация по тексту для кнопок без четких селекторов
+    const allButtons = root.querySelectorAll("button");
+    const textFilteredButtons = Array.from(allButtons).filter((button) => {
+      const text = button.textContent.toLowerCase();
+      return (
+        text.includes("bid") ||
+        text.includes("ставк") ||
+        text.includes("place bid") ||
+        text.includes("сделать ставку")
+      );
+    });
+
+    // Объединение результатов
+    return [...buttons, ...textFilteredButtons];
   }
 
   trackPageViews() {
@@ -254,7 +264,18 @@ class ActionTracker {
     window.addEventListener("beforeunload", this.handlePageUnload.bind(this));
   }
 
+  trackImportantClicks() {
+    // Отслеживание других важных кликов
+    document.addEventListener(
+      "click",
+      this.handleImportantClick.bind(this),
+      true
+    );
+  }
+
   handleBidClick(event) {
+    if (!this.isActive) return;
+
     const button = event.target.closest("button");
     if (!button) return;
 
@@ -277,10 +298,45 @@ class ActionTracker {
     };
 
     // Отправляем данные в background script
-    chrome.runtime.sendMessage({
-      action: "trackEvent",
-      data: eventData,
-    });
+    this.sendEventToBackground(eventData);
+  }
+
+  handleImportantClick(event) {
+    if (!this.isActive) return;
+
+    const target = event.target;
+    const isImportant = this.isImportantClick(target);
+
+    if (isImportant) {
+      const eventData = {
+        type: "IMPORTANT_CLICK",
+        action: "CLICK",
+        timestamp: new Date().toISOString(),
+        pageUrl: window.location.href,
+        elementTag: target.tagName,
+        elementText: target.textContent.trim().substring(0, 100),
+        elementClasses: target.className,
+        elementId: target.id || "none",
+      };
+
+      this.sendEventToBackground(eventData);
+    }
+  }
+
+  isImportantClick(element) {
+    // Определяем, является ли клик важным
+    const importantSelectors = [
+      'a[href*="makeBid"]',
+      'a[href*="bid"]',
+      'a[href*="ставк"]',
+      ".important-button",
+      '[data-important="true"]',
+      ".buy-now",
+      ".place-bid",
+      ".watchlist",
+    ];
+
+    return importantSelectors.some((selector) => element.matches(selector));
   }
 
   trackPageView() {
@@ -292,10 +348,7 @@ class ActionTracker {
       referrer: document.referrer,
     };
 
-    chrome.runtime.sendMessage({
-      action: "trackEvent",
-      data: eventData,
-    });
+    this.sendEventToBackground(eventData);
   }
 
   handlePageUnload() {
@@ -307,52 +360,73 @@ class ActionTracker {
 
     // Используем sendBeacon для надежной отправки при закрытии страницы
     if (navigator.sendBeacon) {
+      console.log("Sending data...");
       const blob = new Blob([JSON.stringify(eventData)], {
         type: "application/json",
       });
-      navigator.sendBeacon("https://your-backend.com/api/events", blob);
+      navigator.sendBeacon("https://localhost:5001/api/Actions", blob);
     } else {
-      chrome.runtime.sendMessage({
+      this.sendEventToBackground(eventData);
+    }
+  }
+
+  sendEventToBackground(eventData) {
+    chrome.runtime.sendMessage(
+      {
         action: "trackEvent",
         data: eventData,
-      });
-    }
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.warn(
+            "Could not send event to background:",
+            chrome.runtime.lastError
+          );
+        }
+      }
+    );
+  }
+
+  sendAllEvents() {
+    // Метод для принудительной отправки всех событий
+    // Пока не реализовано накопление событий, но можно добавить
+    console.log("Force send events called");
   }
 
   extractLotData() {
     // Извлекаем данные о лоте (адаптируйте под структуру Copart)
-    const lotNumberElem = document.querySelector('[data-uname="lotNumber"]');
-    const lotNameElem = document.querySelector("h1");
+    try {
+      const lotNumberElem = document.querySelector('[data-uname="lotNumber"]');
+      const lotNameElem = document.querySelector("h1");
+      const vinElem = document.querySelector('[data-uname="lotVIN"]');
 
-    return {
-      lotNumber: lotNumberElem ? lotNumberElem.textContent.trim() : "Unknown",
-      lotName: lotNameElem ? lotNameElem.textContent.trim() : "Unknown",
-    };
+      return {
+        lotNumber: lotNumberElem ? lotNumberElem.textContent.trim() : "Unknown",
+        lotName: lotNameElem ? lotNameElem.textContent.trim() : "Unknown",
+        vin: vinElem ? vinElem.textContent.trim() : "Unknown",
+      };
+    } catch (error) {
+      console.error("Error extracting lot data:", error);
+      return { lotNumber: "Error", lotName: "Error", vin: "Error" };
+    }
   }
 
   extractBidData(button) {
     // Извлекаем данные о ставке
-    const bidAmountElem = document.querySelector('[data-uname="currentBid"]');
-    const userBidInput = document.querySelector(
-      'input[type="number"], input[name="bidAmount"]'
-    );
+    try {
+      const bidAmountElem = document.querySelector('[data-uname="currentBid"]');
+      const userBidInput = document.querySelector(
+        'input[type="number"], input[name="bidAmount"]'
+      );
 
-    return {
-      bidAmount: bidAmountElem ? bidAmountElem.textContent.trim() : "Unknown",
-      userBidAmount: userBidInput ? userBidInput.value : "Unknown",
-    };
-  }
-
-  removeEventListeners() {
-    // Удаляем все обработчики событий
-    const bidButtons = document.querySelectorAll(
-      '[data-uname="bidButton"], .bid-button, [class*="bid"]'
-    );
-    bidButtons.forEach((button) => {
-      button.removeEventListener("click", this.handleBidClick);
-    });
-
-    window.removeEventListener("beforeunload", this.handlePageUnload);
+      return {
+        bidAmount: bidAmountElem ? bidAmountElem.textContent.trim() : "Unknown",
+        userBidAmount: userBidInput ? userBidInput.value : "Unknown",
+      };
+    } catch (error) {
+      console.error("Error extracting bid data:", error);
+      return { bidAmount: "Error", userBidAmount: "Error" };
+    }
   }
 }
 

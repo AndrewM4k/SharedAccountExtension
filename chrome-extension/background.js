@@ -1,3 +1,4 @@
+//#region Connection
 class CookieService {
   constructor() {
     this.copartDomain = "https://www.copart.com";
@@ -209,3 +210,108 @@ async function authenticateWithBackend() {
     return { success: false, error: error.message };
   }
 }
+//#endregion
+
+//#region Events
+
+class EventService {
+  constructor() {
+    this.eventQueue = [];
+    this.retryAttempts = 3;
+    this.init();
+  }
+
+  init() {
+    // Обработчик сообщений от content script
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === "trackEvent") {
+        this.addToQueue(message.data);
+        sendResponse({ success: true });
+      }
+      return true;
+    });
+
+    // Периодическая отправка событий
+    setInterval(() => {
+      this.processQueue();
+    }, 10000); // Отправляем каждые 10 секунд
+
+    // Обработчик перед закрытием страницы
+    chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+      this.processQueue(); // Пытаемся отправить оставшиеся события
+    });
+  }
+
+  addToQueue(eventData) {
+    // Добавляем информацию о пользователе
+    chrome.storage.local.get(["user", "authToken"], (data) => {
+      const enhancedEvent = {
+        ...eventData,
+        userId: data.user ? data.user.id : "unknown",
+        userEmail: data.user ? data.user.email : "unknown",
+        extensionVersion: chrome.runtime.getManifest().version,
+      };
+
+      this.eventQueue.push(enhancedEvent);
+
+      // Если очередь становится большой, отправляем сразу
+      if (this.eventQueue.length >= 20) {
+        this.processQueue();
+      }
+    });
+  }
+
+  async processQueue() {
+    if (this.eventQueue.length === 0) return;
+
+    const eventsToSend = [...this.eventQueue];
+    this.eventQueue = []; // Очищаем очередь
+
+    try {
+      const { authToken } = await new Promise((resolve) => {
+        chrome.storage.local.get(["authToken"], resolve);
+      });
+
+      if (!authToken) {
+        console.warn("No auth token available, skipping event send");
+        this.eventQueue = [...eventsToSend, ...this.eventQueue];
+        return;
+      }
+
+      const response = await fetch("https://localhost:5001/api/Actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ events: eventsToSend }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      console.log(`Successfully sent ${eventsToSend.length} events`);
+    } catch (error) {
+      console.error("Failed to send events:", error);
+
+      // Возвращаем события в очередь для повторной попытки
+      this.eventQueue = [...eventsToSend, ...this.eventQueue];
+
+      // Уменьшаем количество попыток для этих событий
+      eventsToSend.forEach((event) => {
+        event.retryCount = (event.retryCount || 0) + 1;
+      });
+
+      // Удаляем события, которые превысили лимит попыток
+      this.eventQueue = this.eventQueue.filter(
+        (event) => (event.retryCount || 0) < this.retryAttempts
+      );
+    }
+  }
+}
+
+// Инициализация сервиса событий
+const eventService = new EventService();
+
+//#endregion

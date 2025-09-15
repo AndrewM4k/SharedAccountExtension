@@ -216,7 +216,6 @@ async function authenticateWithBackend() {
 
 class EventService {
   constructor() {
-    this.isTracking = false;
     this.eventQueue = [];
     this.retryAttempts = 3;
     this.init();
@@ -228,27 +227,14 @@ class EventService {
       if (message.action === "trackEvent") {
         this.addToQueue(message.data);
         sendResponse({ success: true });
-      } else if (message.action === "startTracking") {
-        this.startTracking();
-        sendResponse({ success: true });
-      } else if (message.action === "stopTracking") {
-        this.stopTracking();
-        sendResponse({ success: true });
-      } else if (message.action === "getTrackingStatus") {
-        sendResponse({ isTracking: this.isTracking });
       }
       return true;
-    });
-
-    // Обработчик установки расширения
-    chrome.runtime.onInstalled.addListener(() => {
-      this.loadConfiguration();
     });
 
     // Периодическая отправка событий
     setInterval(() => {
       this.processQueue();
-    }, 5000); // Отправляем каждые 5 секунд
+    }, 10000); // Отправляем каждые 10 секунд
 
     // Обработчик перед закрытием страницы
     chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
@@ -256,22 +242,7 @@ class EventService {
     });
   }
 
-  startTracking() {
-    this.isTracking = true;
-    console.log("Event tracking started");
-    this.notifyContentScripts("startTracking");
-  }
-
-  stopTracking() {
-    this.isTracking = false;
-    console.log("Event tracking stopped");
-    this.notifyContentScripts("stopTracking");
-    this.processQueue(); // Отправляем оставшиеся события
-  }
-
   addToQueue(eventData) {
-    if (!this.isTracking) return;
-
     // Добавляем информацию о пользователе
     chrome.storage.local.get(["user", "authToken"], (data) => {
       const enhancedEvent = {
@@ -284,7 +255,7 @@ class EventService {
       this.eventQueue.push(enhancedEvent);
 
       // Если очередь становится большой, отправляем сразу
-      if (this.eventQueue.length >= 10) {
+      if (this.eventQueue.length >= 20) {
         this.processQueue();
       }
     });
@@ -301,7 +272,13 @@ class EventService {
         chrome.storage.local.get(["authToken"], resolve);
       });
 
-      const response = await fetch("https://your-backend.com/api/events", {
+      if (!authToken) {
+        console.warn("No auth token available, skipping event send");
+        this.eventQueue = [...eventsToSend, ...this.eventQueue];
+        return;
+      }
+
+      const response = await fetch("https://localhost:5001/api/Actions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -331,44 +308,6 @@ class EventService {
         (event) => (event.retryCount || 0) < this.retryAttempts
       );
     }
-  }
-
-  notifyContentScripts(action) {
-    // Уведомляем все вкладки Copart об изменении статуса трекинга
-    chrome.tabs.query({ url: "*://*.copart.com/*" }, (tabs) => {
-      tabs.forEach((tab) => {
-        chrome.tabs.sendMessage(tab.id, { action: action });
-      });
-    });
-  }
-
-  loadConfiguration() {
-    // Загрузка конфигурации с сервера
-    chrome.storage.local.get(["authToken"], async (data) => {
-      if (data.authToken) {
-        try {
-          const response = await fetch(
-            "https://your-backend.com/api/tracking-config",
-            {
-              headers: {
-                Authorization: `Bearer ${data.authToken}`,
-              },
-            }
-          );
-
-          if (response.ok) {
-            const config = await response.json();
-            chrome.storage.local.set({ trackingConfig: config });
-
-            if (config.trackingEnabled) {
-              this.startTracking();
-            }
-          }
-        } catch (error) {
-          console.error("Failed to load tracking config:", error);
-        }
-      }
-    });
   }
 }
 

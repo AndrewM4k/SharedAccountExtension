@@ -11,12 +11,12 @@ namespace SharedAccountBackend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class ActionController : ControllerBase
+    public class ActionsController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly ILogger<ActionController> _logger;
+        private readonly ILogger<ActionsController> _logger;
 
-        public ActionController(AppDbContext context, ILogger<ActionController> logger)
+        public ActionsController(AppDbContext context, ILogger<ActionsController> logger)
         {
             _logger = logger;
             _context = context;
@@ -71,7 +71,7 @@ namespace SharedAccountBackend.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> ReceiveEvents([FromBody] ActionCollectionDto eventCollection)
+        public async Task<IActionResult> ReceiveActions([FromBody] ActionCollectionDto eventCollection)
         {
             try
             {
@@ -88,6 +88,10 @@ namespace SharedAccountBackend.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+
+                // Удаление старья
+                //await CleanOldEvents();
+
                 return Ok(new { Success = true, Received = eventCollection.Actions.Count });
             }
             catch (Exception ex)
@@ -115,7 +119,7 @@ namespace SharedAccountBackend.Controllers
                         ActionTime = DateTime.Parse(eventDto.Timestamp),
                         CreatedAt = DateTime.UtcNow
                     };
-                    _context.CopartActions.Add(bidEvent);
+                    await _context.CopartActions.AddAsync(bidEvent);
                     break;
 
                 case "PAGE_VIEW":
@@ -129,12 +133,36 @@ namespace SharedAccountBackend.Controllers
                         Timestamp = DateTime.Parse(eventDto.Timestamp),
                         CreatedAt = DateTime.UtcNow
                     };
-                    _context.PageViewActions.Add(pageViewEvent);
+                    await _context.PageViewActions.AddAsync(pageViewEvent);
                     break;
 
                 default:
                     _logger.LogWarning($"Unknown event type: {eventDto.ActionType}");
                     break;
+
+            }
+        }
+
+        private async Task CleanOldEvents()
+        {
+            try
+            {
+                // Удаляем события старше 30 дней
+                var cutoffDate = DateTime.UtcNow.AddDays(-30);
+
+                var oldBidEvents = _context.CopartActions.Where(e => e.CreatedAt < cutoffDate);
+                var oldPageViewEvents = _context.PageViewActions.Where(e => e.CreatedAt < cutoffDate);
+
+                _context.CopartActions.RemoveRange(oldBidEvents);
+                _context.PageViewActions.RemoveRange(oldPageViewEvents);
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Cleaned up old events before {cutoffDate}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cleaning old events");
             }
         }
     }
