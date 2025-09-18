@@ -102,38 +102,6 @@ namespace SharedAccountBackend.Controllers
             }
         }
 
-
-        //[HttpPost]
-        //public async Task<IActionResult> ReceiveActions([FromBody] ActionCollectionDto eventCollection)
-        //{
-        //    try
-        //    {
-        //        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            //        if (string.IsNullOrEmpty(userId))
-            //        {
-            //            return Unauthorized();
-            //        }
-
-            //        foreach (var eventDto in eventCollection.Actions)
-            //        {
-            //            await ProcessEvent(userId, eventDto);
-            //        }
-
-            //        await _context.SaveChangesAsync();
-
-            //        // Удаление старья
-            //        //await CleanOldEvents();
-
-            //        return Ok(new { Success = true, Received = eventCollection.Actions.Count });
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        _logger.LogError(ex, "Error processing events");
-            //        return StatusCode(500, new { Success = false, Message = ex.Message });
-            //    }
-            //}
-
         private async Task ProcessEvent(string userId, ActionDto eventDto)
         {
             switch (eventDto.ActionType)
@@ -198,6 +166,68 @@ namespace SharedAccountBackend.Controllers
             {
                 _logger.LogError(ex, "Error cleaning old events");
             }
+        }
+
+        [HttpPost("add-bulk")]
+        public async Task<IActionResult> AddBulkActions([FromBody] ActionCollectionDto actionCollection)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            if (actionCollection == null || !actionCollection.Actions.Any())
+            {
+                return BadRequest("No actions provided.");
+            }
+
+            _logger.LogInformation("Received bulk action request with {Count} actions.", actionCollection.Actions.Count);
+
+            try
+            {
+                // Проверяем, нет ли уже таких действий в БД (по timestamp и userId)
+                var newActions = await FilterNewActions(actionCollection.Actions);
+
+                if (newActions.Any())
+                {
+                    // Сохраняем только новые действия
+                    foreach (var action in newActions)
+                    {
+                        // логика сохранения
+                        await ProcessEvent(userId, action);
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+
+                // Возвращаем успешный результат с количеством обработанных действий
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Processed {newActions.Count} new actions.",
+                    processedCount = newActions.Count
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing bulk actions");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        // Метод для фильтрации уже существующих действий
+        private async Task<List<ActionDto>> FilterNewActions(List<ActionDto> actions)
+        {
+            // Реализуйте логику проверки, какие действия уже есть в БД
+            // Например, по комбинации userId и timestamp
+            var existingActions = await _context.CopartActions
+                .Where(a => actions.Select(dto => TimeZoneInfo.ConvertTimeToUtc(DateTime.Parse(dto.Timestamp))).Contains(a.CreatedAt))
+                .ToListAsync();
+            //TimeZoneInfo.ConvertTimeToUtc(DateTime.Parse(
+            return actions.Where(a => existingActions.All(e => e.CreatedAt != TimeZoneInfo.ConvertTimeToUtc(DateTime.Parse(a.Timestamp))))
+                .ToList();
         }
     }
 }
