@@ -15,6 +15,15 @@ export const login = (username: string, password: string) => {
   );
 };
 
+export const logout = () => {
+  return axios.post(
+    `${API_BASE}/auth/logout`,
+    {
+      withCredentials: true,
+    }
+  );
+};
+
 export const сopartAuth = () => {
   return axios.post(
     `${API_BASE}/CopartAuth/auth`,

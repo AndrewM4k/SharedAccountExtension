@@ -5,7 +5,6 @@ import './Popup.css';
 import Alert from '../alert/Alert';
 import React from 'react';
 import * as apiService from '.././apiService';
-import { HttpError } from '@microsoft/signalr';
 
 const Popup = () => {
   const [username, setUsername] = useState('');
@@ -144,11 +143,7 @@ const Popup = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post(
-        'https://localhost:5001/api/auth/logout',
-        {},
-        { withCredentials: true }
-      );
+      await apiService.logout();
       
       console.log("logOut");
       chrome.runtime.sendMessage({ 
@@ -168,20 +163,21 @@ const Popup = () => {
   if (isLoading) {
     return (
       <div className="popup-container">
-        <div className="popup-text">Проверка авторизации...</div>
+        <div className="popup-text fs1_7">Проверка авторизации...</div>
       </div>
     );
   }
 
   return (
     <div className="popup-container">
-      <div className="popup-header"> Вход в Shared Account</div>
       {isLoggedIn ? (
         <div className="popup-container">
+          <div className="popup-header"> Добро пожаловать в Shared Account</div>
           <div className="popup-text">
-            Вы вошли как: <strong>{username}</strong>
+            Логин:{' '} 
+            <strong>{username}</strong>
             <br />
-            Роль:{' '}
+            Позиция:{' '}
             <strong>
               {userRole == '0' ? 'Администратор' : 'Пользователь'}
             </strong>
@@ -204,6 +200,8 @@ const Popup = () => {
         </div>
       ) : (
         <form onSubmit={handleLogin}>
+          
+      <div className="popup-header"> Вход в Shared Account</div>
           <div className="input-group mb-3">
             <input
               className="form-control input"

@@ -1,3 +1,5 @@
+const API_BASE = "https://localhost:5001/api";
+
 //#region Connection
 class CookieService {
   constructor() {
@@ -171,7 +173,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function authenticateWithBackend() {
   try {
     // Выполняем запрос к бэкенду
-    const response = await fetch("https://localhost:5001/api/copartAuth/auth", {
+    const response = await fetch(API_BASE + "/copartAuth/auth", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -371,16 +373,13 @@ async function processQueue() {
   });
 
   try {
-    const response = await fetch(
-      "https://localhost:5001/api/actions/add-bulk",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ actions: actionsToSend }),
-      }
-    );
+    const response = await fetch(API_BASE + "/actions/add-bulk", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ actions: actionsToSend }),
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -419,7 +418,7 @@ chrome.runtime.onSuspend.addListener(() => {
     const userToken = getAuthTokenSync(); // Нужно реализовать синхронное получение токена
 
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "https://localhost:5001/api/actions/add-bulk", false); // Синхронный запрос
+    xhr.open("POST", API_BASE + "/actions/add-bulk", false); // Синхронный запрос
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.setRequestHeader("Authorization", `Bearer ${userToken}`);
     xhr.send(JSON.stringify({ actions: actionQueue }));
