@@ -23,7 +23,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 10px;
 }
 .popup-text {
   width: 280px;
@@ -35,6 +34,7 @@
 }
 .logged-btn {
   font-size: 1em;
+  margin-bottom: 20px;
 }
 .btn-primary {
   cursor: pointer;
@@ -62,4 +62,8 @@
 }
 .fs1_7 {
   font-size: 1.7em !important;
+}
+.border2 {
+  padding: 5px;
+  border: 0.5px solid blue !important;
 }

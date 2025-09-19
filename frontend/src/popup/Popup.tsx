@@ -162,7 +162,7 @@ const Popup = () => {
 
   if (isLoading) {
     return (
-      <div className="popup-container">
+      <div className="popup-container ">
         <div className="popup-text fs1_7">Проверка авторизации...</div>
       </div>
     );
@@ -173,7 +173,7 @@ const Popup = () => {
       {isLoggedIn ? (
         <div className="popup-container">
           <div className="popup-header"> Добро пожаловать в Shared Account</div>
-          <div className="popup-text">
+          <div className="popup-text border2">
             Логин:{' '} 
             <strong>{username}</strong>
             <br />
@@ -181,6 +181,7 @@ const Popup = () => {
             <strong>
               {userRole == '0' ? 'Администратор' : 'Пользователь'}
             </strong>
+
           </div>
 
           {userRole == '0' && (
@@ -188,7 +189,7 @@ const Popup = () => {
               Панель администратора
             </button>
           )}
-
+          
           <div className="logged-btn">
             <button
               onClick={handleLogout}
