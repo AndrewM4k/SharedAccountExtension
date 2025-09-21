@@ -33,8 +33,8 @@ namespace SharedAccountBackend.Services
             _driver = new ChromeDriver(options);
 
             // Установка времени ожидания по умолчанию
-            _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
-            _driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(10);
+            _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(30);
+            _driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
         }
 
         public async Task<Dictionary<string, string>> LoginToCopart(string username, string password)
@@ -53,7 +53,7 @@ namespace SharedAccountBackend.Services
                         _logger.LogInformation("Авторизация успешна");
 
                         // Делаем скриншот после авторизации (для отладки)
-                        //TakeScreenshot("after_login");
+                        TakeScreenshot("after_login");
 
                         // Получаем все куки
                         return GetCookies();
@@ -61,14 +61,14 @@ namespace SharedAccountBackend.Services
                     else
                     {
                         _logger.LogError("Авторизация не удалась");
-                        //TakeScreenshot("login_failed");
+                        TakeScreenshot("login_failed");
                         continue;
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Ошибка при авторизации через Selenium");
-                    //TakeScreenshot("error");
+                    TakeScreenshot("error");
                 }
             }
             return null;
@@ -83,25 +83,27 @@ namespace SharedAccountBackend.Services
                 // Принимаем куки, если есть всплывающее окно
                 //TryAcceptCookies();
 
+                TakeScreenshot("before");
+
                 // Заполняем форму логина
                 _logger.LogInformation("Заполнение формы логина");
 
-                var usernameField = WaitForElement(By.Name("username"), TimeSpan.FromSeconds(5));
-                var passwordField = WaitForElement(By.Name("password"), TimeSpan.FromSeconds(5));
-                var loginButton = WaitForElement(By.CssSelector("button[data-uname='loginSigninmemberbutton']"), TimeSpan.FromSeconds(5));
+                var usernameField = WaitForElement(By.Name("username"), TimeSpan.FromSeconds(30));
+                var passwordField = WaitForElement(By.Name("password"), TimeSpan.FromSeconds(30));
+                var loginButton = WaitForElement(By.CssSelector("button[data-uname='loginSigninmemberbutton']"), TimeSpan.FromSeconds(30));
 
                 usernameField.SendKeys(username);
                 passwordField.SendKeys(password);
 
                 // Делаем скриншот перед отправкой формы (для отладки)
-                //TakeScreenshot("before_login");
+                TakeScreenshot("before_login");
 
                 // Нажимаем кнопку входа
                 loginButton.Click();
 
                 // Ждем завершения авторизации
                 _logger.LogInformation("Ожидание завершения авторизации");
-                await WaitForNavigation(TimeSpan.FromSeconds(5));
+                await WaitForNavigation(TimeSpan.FromSeconds(30));
             }
         }
 
@@ -118,7 +120,7 @@ namespace SharedAccountBackend.Services
         private async Task WaitForPageLoad()
         {
             var jsExecutor = (IJavaScriptExecutor)_driver;
-            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
+            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(15));
 
             wait.Until(driver => jsExecutor.ExecuteScript("return document.readyState").Equals("complete"));
 
