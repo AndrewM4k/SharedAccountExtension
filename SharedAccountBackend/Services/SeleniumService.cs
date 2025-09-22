@@ -1,5 +1,6 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Interactions;
 using OpenQA.Selenium.Support.UI;
 
 namespace SharedAccountBackend.Services
@@ -9,7 +10,7 @@ namespace SharedAccountBackend.Services
         private readonly IWebDriver _driver;
         private readonly ILogger<SeleniumService> _logger;
         private const int AllowedCountOfRetry = 5;
-        
+
         public SeleniumService(ILogger<SeleniumService> logger)
         {
             _logger = logger;
@@ -18,13 +19,18 @@ namespace SharedAccountBackend.Services
             var options = new ChromeOptions();
 
             // Headless режим (раскомментировать для продакшена)
-             options.AddArgument("--headless");
+            options.AddArgument("--headless");
 
             options.AddArgument("--no-sandbox");
             options.AddArgument("--disable-dev-shm-usage");
             options.AddArgument("--disable-gpu");
             options.AddArgument("--window-size=1920,1080");
             options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+            // Stealth-опции
+            options.AddArgument("--disable-blink-features=AutomationControlled");
+            options.AddExcludedArgument("enable-automation");
+            options.AddAdditionalOption("useAutomationExtension", false);
 
             // Отключение автоматического обнаружения автоматизации
             options.AddExcludedArgument("enable-automation");
@@ -67,7 +73,7 @@ namespace SharedAccountBackend.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Ошибка при авторизации через Selenium");
+                    _logger.LogError(ex, $"Ошибка при авторизации через Selenium на попытке {i + 1}");
                     TakeScreenshot("error");
                 }
             }
@@ -80,10 +86,23 @@ namespace SharedAccountBackend.Services
                 // Ждем загрузки страницы
                 await WaitForPageLoad();
 
+                await HumanLikeActions();
+
+                //ПРОВОЦИРУЕМ КАПЧУ
+                //for (int i = 0; i < 100; i++)
+                //{
+                //    _driver.Navigate().GoToUrl("https://www.copart.com/login");
+                //}
+
                 // Принимаем куки, если есть всплывающее окно
                 //TryAcceptCookies();
 
                 TakeScreenshot("before");
+                
+                //if (IsCaptchaPresent())
+                //{
+                //    TakeScreenshot("Captcha");
+                //}
 
                 // Заполняем форму логина
                 _logger.LogInformation("Заполнение формы логина");
@@ -92,8 +111,13 @@ namespace SharedAccountBackend.Services
                 var passwordField = WaitForElement(By.Name("password"), TimeSpan.FromSeconds(30));
                 var loginButton = WaitForElement(By.CssSelector("button[data-uname='loginSigninmemberbutton']"), TimeSpan.FromSeconds(30));
 
-                usernameField.SendKeys(username);
-                passwordField.SendKeys(password);
+
+                await HumanLikeTextEntry(usernameField, username);
+                await Task.Delay(800 + new Random().Next(200, 600));
+                await HumanLikeTextEntry(passwordField, password);
+
+                //usernameField.SendKeys(username);
+                //passwordField.SendKeys(password);
 
                 // Делаем скриншот перед отправкой формы (для отладки)
                 TakeScreenshot("before_login");
@@ -104,6 +128,36 @@ namespace SharedAccountBackend.Services
                 // Ждем завершения авторизации
                 _logger.LogInformation("Ожидание завершения авторизации");
                 await WaitForNavigation(TimeSpan.FromSeconds(30));
+            }
+        }
+
+        private bool IsCaptchaPresent()
+        {
+            try
+            {
+                // Проверяем различные селекторы hCaptcha
+                var hcaptchaSelectors = new[]
+                {
+                    By.CssSelector("iframe[src*='hcaptcha']"),
+                    By.CssSelector(".h-captcha"),
+                    By.Id("hcaptcha-container")
+                };
+
+                return hcaptchaSelectors.Any(selector =>
+                {
+                    try
+                    {
+                        return _driver.FindElement(selector).Displayed;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                });
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -165,6 +219,94 @@ namespace SharedAccountBackend.Services
             }
 
             return cookieDict;
+        }
+
+        private async Task HumanLikeTextEntry(IWebElement element, string text)
+        {
+            foreach (char c in text)
+            {
+                element.SendKeys(c.ToString());
+                await Task.Delay(new Random().Next(50, 150)); // Случайные задержки между символами
+            }
+        }
+        private string FindHCaptchaSiteKey()
+        {
+            try
+            {
+                // Попробуем найти hCaptcha по различным селекторам
+                var hcaptchaSelectors = new[]
+                {
+                    By.CssSelector("div[data-sitekey]"),
+                    By.CssSelector(".h-captcha[data-sitekey]"),
+                    By.CssSelector("iframe[src*='hcaptcha.com']")
+                };
+
+                foreach (var selector in hcaptchaSelectors)
+                {
+                    try
+                    {
+                        var element = _driver.FindElement(selector);
+                        var siteKey = element.GetAttribute("data-sitekey");
+
+                        if (!string.IsNullOrEmpty(siteKey))
+                        {
+                            _logger.LogInformation($"Найден hCaptcha sitekey: {siteKey}");
+                            return siteKey;
+                        }
+                    }
+                    catch
+                    {
+                        // Продолжаем поиск с другими селекторами
+                    }
+                }
+
+                // Альтернативный метод: поиск через JavaScript
+                var jsExecutor = (IJavaScriptExecutor)_driver;
+                var siteKeyFromScript = jsExecutor.ExecuteScript(
+                    "return document.querySelector('[data-sitekey]')?.dataset?.sitekey || " +
+                    "document.querySelector('iframe[src*=\"hcaptcha.com\"]')?.src?.match(/sitekey=([^&]+)/)?.[1]");
+
+                if (siteKeyFromScript != null)
+                {
+                    _logger.LogInformation($"Найден hCaptcha sitekey через JS: {siteKeyFromScript}");
+                    return siteKeyFromScript.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при поиске hCaptcha sitekey");
+            }
+
+            _logger.LogWarning("Не удалось найти hCaptcha sitekey на странице");
+            return null;
+        }
+
+        private async Task HumanLikeActions()
+        {
+            // Случайные движения мыши
+            var actions = new Actions(_driver);
+            var random = new Random();
+
+            // Случайное перемещение по странице
+            for (int i = 0; i < 3; i++)
+            {
+                int x = random.Next(100, 500);
+                int y = random.Next(100, 500);
+                actions.MoveByOffset(x, y).Perform();
+                await Task.Delay(random.Next(300, 800));
+            }
+
+            // Случайные клики
+            if (random.Next(0, 100) > 70)
+            {
+                actions.Click().Perform();
+                await Task.Delay(random.Next(200, 500));
+            }
+
+            // Случайный скроллинг
+            int scrollAmount = random.Next(200, 800);
+            ((IJavaScriptExecutor)_driver).ExecuteScript($"window.scrollBy(0, {scrollAmount})");
+            await Task.Delay(random.Next(500, 1200));
         }
 
         private void TryAcceptCookies()

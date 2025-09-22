@@ -3,6 +3,7 @@ using System.Runtime.ConstrainedExecution;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SharedAccountBackend;
@@ -13,9 +14,11 @@ using SharedAccountBackend.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Настройка Kestrel (HTTPS)
-builder.WebHost.ConfigureKestrel(serverOptions => {
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
     serverOptions.ListenLocalhost(5000); // HTTP
-    serverOptions.ListenLocalhost(5001, listenOptions => { // HTTPS
+    serverOptions.ListenLocalhost(5001, listenOptions =>
+    { // HTTPS
         listenOptions.UseHttps();
     });
 });
@@ -54,8 +57,8 @@ builder.Services.AddSwaggerGen(c =>
 // Database (требует PostgreSQL в appsettings.json)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL")
-        //,
-        //o => o.MigrationsAssembly("SharedAccountBackend.Migrations.Project")
+    //,
+    //o => o.MigrationsAssembly("SharedAccountBackend.Migrations.Project")
     ));
 
 builder.Services.AddSignalR();
@@ -74,10 +77,10 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .WithExposedHeaders("X-XSRF-TOKEN", "Set-Cookie")
             .AllowCredentials()
-            
-        //.SetIsOriginAllowed(origin =>
-        //    origin.Contains("chrome-extension://") ||
-        //    origin.StartsWith("http://localhost"))
+
+            //.SetIsOriginAllowed(origin =>
+            //    origin.Contains("chrome-extension://") ||
+            //    origin.StartsWith("http://localhost"))
             ;
     });
 });
@@ -148,7 +151,7 @@ if (app.Environment.IsDevelopment())
         };
     });
 }
-app.UseRouting(); 
+app.UseRouting();
 app.UseCors("AllowAll");
 app.Use(async (context, next) =>
 {
