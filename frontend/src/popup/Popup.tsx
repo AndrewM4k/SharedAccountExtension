@@ -160,6 +160,10 @@ const Popup = () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('admin.html') });
   };
 
+  const openDashboard = () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') });
+  };
+
   if (isLoading) {
     return (
       <div className="popup-container ">
@@ -187,6 +191,12 @@ const Popup = () => {
           {userRole == '0' && (
             <button onClick={openAdminPanel} className="btn btn-primary">
               Панель администратора
+            </button>
+          )}
+
+          {userRole == '0' && (
+            <button onClick={openDashboard} className="btn btn-primary">
+              Пользовательские действия
             </button>
           )}
           

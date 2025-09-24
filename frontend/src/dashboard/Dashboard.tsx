@@ -61,7 +61,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="dashboard-container">
-      <h1>Copart Actions Monitor</h1>
+      <h1>Пользовательские действия</h1>
 
       <ActionFilters filters={filters} onFilterChange={handleFilterChange} />
 

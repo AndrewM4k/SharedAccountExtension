@@ -29,29 +29,29 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
   };
 
   if (loading) {
-    return <div className="loading-indicator">Loading actions...</div>;
+    return <div className="loading-indicator">Загрузка событий...</div>;
   }
 
   return (
     <div className="actions-table">
-      <table>
-        <thead>
+      <table className="table m-3">
+        <thead className="thead-light">
           <tr>
-            <th>User ID</th>
-            <th>Time</th>
-            <th>Action</th>
-            <th>Lot Number</th>
-            <th>Details</th>
+            <th>Пользовательский ID</th>
+            <th>Время</th>
+            <th>Событие</th>
+            <th>Номер лота</th>
+            <th>Детали</th>
           </tr>
         </thead>
         <tbody>
-          {actions.length === 0 ? (
+          {actions && actions.length === 0 ? (
             <tr>
               <td colSpan={5} className="no-data">
-                No actions found
+                Нет сбоытий
               </td>
             </tr>
-          ) : (
+          ) : ( actions &&
             actions.map((action) => {
               const details = parseDetails(action.details);
               return (
@@ -88,18 +88,18 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
             disabled={currentPage === 1}
             onClick={() => onPageChange(currentPage - 1)}
           >
-            Previous
+            Предыдущая
           </button>
 
           <span>
-            Page {currentPage} of {totalPages}
+            Страница {currentPage} of {totalPages}
           </span>
 
           <button
             disabled={currentPage === totalPages}
             onClick={() => onPageChange(currentPage + 1)}
           >
-            Next
+            Следующая
           </button>
         </div>
       )}
