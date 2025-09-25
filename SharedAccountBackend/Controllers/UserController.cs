@@ -60,7 +60,7 @@ namespace SharedAccountBackend.Controllers
             {
                 Username = model.Username,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
-                Role = Role.User
+                Role = model.Role.ToUpper().Equals(Role.Admin.ToString().ToUpper()) || model.Role.ToUpper().Equals("ADMINISTRATOR") ? Role.Admin : Role.User 
             });
             await _db.SaveChangesAsync();
 

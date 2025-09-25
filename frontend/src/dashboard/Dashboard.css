@@ -1,6 +1,7 @@
 @import "bootstrap/dist/css/bootstrap.min.css";
 
 .dashboard-container {
+  color: rgb(63, 121, 255);
   margin: 0 auto;
   display: flex;
   flex-direction: Column;
@@ -52,7 +53,7 @@ th {
 } */
 
 th {
-  background: lightblue !important;
+  background: rgb(127, 165, 255) !important;
   border-bottom: 1px solid black;
 }
 td {

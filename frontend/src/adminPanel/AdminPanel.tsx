@@ -13,7 +13,7 @@ const AdminPanel = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    console.log('Start');
+    console.log('getting users');
     fetchUsers();
   }, []);
 
@@ -25,15 +25,16 @@ const AdminPanel = () => {
 
         if (accessTokenResponse.status !== 200) {
           // 2. Если access token невалиден, пробуем обновить токены
-          const refreshResponse = await fetch(
-            'https://localhost:5001/api/auth/refresh-token',
-            {
-              method: 'POST',
-              credentials: 'include',
-            }
-          );
+          // const refreshResponse = await fetch(
+          //   'https://localhost:5001/api/auth/refresh-token',
+          //   {
+          //     method: 'POST',
+          //     credentials: 'include',
+          //   }
+          // )
+          const refreshResponse = await apiService.refreshToken();
 
-          if (!refreshResponse.ok) {
+          if (refreshResponse.status !== 200) {
             throw new Error('Refresh failed');
           }
 
@@ -69,8 +70,7 @@ const AdminPanel = () => {
 
       if (checkResponse.status === 200) {
         // 2. Получаем информацию о пользователе
-        const userResponse = await apiService.me();
-
+        await apiService.me();
         return;
       }
     } catch (error) {
@@ -87,6 +87,7 @@ const AdminPanel = () => {
 
           if (recheckResponse.status === 200) {
             const userResponse = await apiService.me();
+            console.log('who is: ', userResponse);
             return;
           }
         }
@@ -98,33 +99,38 @@ const AdminPanel = () => {
   };
 
   const fetchUsers = async () => {
+
+    try{
+      await apiService.check();
+    }
+    catch(error){
+      console.error('check failed: ', error);
+      const refreshResponse = await apiService.refreshToken();
+      if(refreshResponse.status === 200 )
+        console.error('refresh token succeed');
+      else
+        console.error('refresh token failed');
+    }
     try {
-      const response = await apiService.getUsers('/admin/users');
+      const response = await apiService.getUsers();
       setUsers(response.data);
     } catch (error) {
       console.error('Failed to fetch users', error);
     }
   };
 
-  const createUser = async () => {
-    const response = await fetch(
-      'https://localhost:5001/api/admin/users/register',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(newUser),
-      }
-    );
 
-    if (response.ok) {
+  const createUser = async () => {
+    console.log("newUser: ", newUser);
+
+    const response = await apiService.registerUser(newUser);
+
+    if (response.status === 200)  {
       setNewUser({ username: '', password: '', role: 'User' });
       fetchUsers();
     } else {
       checkAuthStatus();
-      setError(await response.text());
+      setError(await response.data);
     }
   };
 
@@ -142,7 +148,7 @@ const AdminPanel = () => {
     {
       var refreshPassword = {
         username: '',
-        newPAssword: '',
+        newPassword: '',
       };
 
       await fetch(`https://localhost:5001/api/admin/users/${id}`, {
@@ -155,15 +161,15 @@ const AdminPanel = () => {
   };
   return (
     <div className="admin-container">
-      <h1>User Management</h1>
+      <h1>Менеджмент пользователей</h1>
 
       <div className="create-user-form">
-        <h2 className="ms-1 me-1">Create New User</h2>
+        <h2 className="ms-1 me-1">Новый пользователь</h2>
         <div className="user-form-container">
           <input
             className="form-control ms-1 me-1"
             type="text"
-            placeholder="Username"
+            placeholder="Имя пользователя"
             value={newUser.username}
             onChange={(e) =>
               setNewUser({ ...newUser, username: e.target.value })
@@ -172,7 +178,7 @@ const AdminPanel = () => {
           <input
             className="form-control ms-1 me-1"
             type="password"
-            placeholder="Password"
+            placeholder="Пароль"
             value={newUser.password}
             onChange={(e) =>
               setNewUser({ ...newUser, password: e.target.value })
@@ -183,12 +189,12 @@ const AdminPanel = () => {
             value={newUser.role}
             onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
           >
-            <option value="User">User</option>
-            <option value="Admin">Admin</option>
+            <option value="User">Пользователь</option>
+            <option value="Admin">Администратор</option>
           </select>
         </div>
-        <button className="btn btn-primary ms-1 me-1 mt-1" onClick={createUser}>
-          Create User
+        <button className="btn btn-primary ms-1 me-1 mt-2" onClick={createUser}>
+          Создать нового пользователя
         </button>
       </div>
 
@@ -198,10 +204,10 @@ const AdminPanel = () => {
         <thead className="thead-light">
           <tr>
             <th scope="col">ID</th>
-            <th scope="col">Username</th>
+            <th scope="col">Имя пользователя</th>
             {/* <th scope="col">Password</th> */}
-            <th scope="col">Role</th>
-            <th scope="col">Actions</th>
+            <th scope="col">Роль</th>
+            <th scope="col">Действия</th>
           </tr>
         </thead>
         <tbody>
@@ -209,22 +215,21 @@ const AdminPanel = () => {
             <tr key={user.id}>
               <td width="10px">{user.id}</td>
               <td width="30%">{user.username}</td>
-              {/* <td width="10px">{user.username}</td> */}
               <td width="20%">{user.role == '0' ? 'Admin' : 'User'}</td>
               <td width="40%">
                 <button
                   className="btn btn-primary m-1"
                   onClick={() => deleteUser(user.id)}
                 >
-                  Delete
+                  Удалить
                 </button>
 
-                <button
+                {/* <button
                   className="btn btn-primary m-1"
                   onClick={() => refreshPassword(user.id)}
                 >
                   Refresh Password
-                </button>
+                </button> */}
               </td>
             </tr>
           ))}

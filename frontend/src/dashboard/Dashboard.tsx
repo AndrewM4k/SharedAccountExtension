@@ -4,6 +4,8 @@ import ActionFilters from './ActionFilters';
 import { ApiResponse, CopartAction } from '../types';
 import './Dashboard.css';
 import { createRoot } from 'react-dom/client';
+import * as apiService from '.././apiService';
+
 const Dashboard: React.FC = () => {
   const [actions, setActions] = useState<CopartAction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,8 @@ const Dashboard: React.FC = () => {
 
   const fetchActions = async () => {
     setLoading(true);
+    
+    await apiService.check();
     try {
       const token = localStorage.getItem('token');
       const query = new URLSearchParams({

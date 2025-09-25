@@ -68,7 +68,8 @@ namespace SharedAccountBackend.Services
                     {
                         _logger.LogError("Авторизация не удалась");
                         TakeScreenshot("login_failed");
-                        continue;
+                        if (i >= AllowedCountOfRetry - 1)
+                            throw new Exception("Авторизация не удалась");
                     }
                 }
                 catch (Exception ex)
@@ -98,7 +99,7 @@ namespace SharedAccountBackend.Services
                 //TryAcceptCookies();
 
                 TakeScreenshot("before");
-                
+
                 //if (IsCaptchaPresent())
                 //{
                 //    TakeScreenshot("Captcha");

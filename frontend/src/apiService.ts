@@ -63,8 +63,21 @@ export const refreshToken = () => {
   });
 };
 
-export function getUsers(token: string) {
+export function getUsers() {
   return axios.get(`${API_BASE}/admin/users`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { 'Content-Type': 'application/json' },
   });
 }
+
+export function registerUser(newUser: any) {
+  return axios.post(
+    `${API_BASE}/admin/users/register`, 
+    { role: newUser.role, password: newUser.password, username: newUser.username },
+    {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+}
+
