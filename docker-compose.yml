@@ -1,0 +1,44 @@
+services:
+  backend:
+    build: 
+      context: ./backend  # путь к папке с .NET проектом
+      dockerfile: Dockerfile
+    container_name: shared_account_backend
+    restart: always
+    ports:
+      - "5000:80"  # внешний порт:внутренний порт
+    depends_on:
+      - db
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=shared_account;Username=postgres;Password=mac1475963
+    volumes:
+      - ./backend:/app  # для разработки - монтируем код
+      - ~/.nuget/packages:/root/.nuget/packages  # кэш nuget
+
+  db:
+    image: postgres:15
+    container_name: shared_account_db
+    restart: always
+    environment:
+      POSTGRES_DB: shared_account
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mac1475963
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: shared_account_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: andrew.mar4uk.dev@yandex.ru
+      PGADMIN_DEFAULT_PASSWORD: mac1475963
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
