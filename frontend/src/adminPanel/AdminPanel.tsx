@@ -134,11 +134,10 @@ const AdminPanel = () => {
     }
   };
 
-  const deleteUser = async (id: number) => {
-    if (window.confirm('Вы уверены, что хотите удалить пользователя?')) {
-      await fetch(`https://localhost:5001/api/admin/users/${id}`, {
+  const deleteUser = async (user: any) => {
+    if (window.confirm(`Вы уверены, что хотите удалить пользователя: ${user.username}?`)) {
+      await fetch(`https://localhost:5001/api/admin/users/${user.id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       fetchUsers();
     }
@@ -219,7 +218,7 @@ const AdminPanel = () => {
               <td width="40%">
                 <button
                   className="btn btn-primary m-1"
-                  onClick={() => deleteUser(user.id)}
+                  onClick={() => deleteUser(user)}
                 >
                   Удалить
                 </button>

@@ -81,3 +81,8 @@ export function registerUser(newUser: any) {
     });
 }
 
+export function deleteUser(userId: any) {
+  return axios.delete(
+    `${API_BASE}/admin/users/${userId}`);
+}
+

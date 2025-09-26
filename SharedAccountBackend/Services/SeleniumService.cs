@@ -288,13 +288,18 @@ namespace SharedAccountBackend.Services
             var actions = new Actions(_driver);
             var random = new Random();
 
-            // Случайное перемещение по странице
-            for (int i = 0; i < 3; i++)
+            //// Случайное перемещение по странице
+            //for (int i = 0; i < 3; i++)
+            //{
+            //    int x = random.Next(100, 500);
+            //    int y = random.Next(100, 500);
+            //    actions.MoveByOffset(x, y).Perform();
+            //    await Task.Delay(random.Next(300, 800));
+            //}
+            var humanMover = new HumanLikeMouseMover(_driver);
+            for (int i = 0; i < 5; i++)
             {
-                int x = random.Next(100, 500);
-                int y = random.Next(100, 500);
-                actions.MoveByOffset(x, y).Perform();
-                await Task.Delay(random.Next(300, 800));
+                await humanMover.HumanLikeMove(steps: 4, maxStepSize: 60);
             }
 
             // Случайные клики
