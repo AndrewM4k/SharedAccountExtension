@@ -12,9 +12,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=shared_account;Username=postgres;Password=mac1475963
-    volumes:
-      - ./SharedAccountBackend:/app  # для разработки - монтируем код
-      - ~/.nuget/packages:/root/.nuget/packages  # кэш nuget
+    # volumes:
+    #   - ./SharedAccountBackend:/app  # для разработки - монтируем код
+    #   - ~/.nuget/packages:/root/.nuget/packages  # кэш nuget
 
   db:
     image: postgres:15
