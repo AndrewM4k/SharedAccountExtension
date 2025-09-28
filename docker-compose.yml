@@ -1,18 +1,19 @@
 services:
   backend:
     build: 
-      context: ./backend  # путь к папке с .NET проектом
+      context: ./SharedAccountBackend 
       dockerfile: Dockerfile
     container_name: shared_account_backend
-    restart: always
+    restart: unless-stopped
     ports:
       - "5000:80"  # внешний порт:внутренний порт
     depends_on:
       - db
     environment:
+      - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=shared_account;Username=postgres;Password=mac1475963
     volumes:
-      - ./backend:/app  # для разработки - монтируем код
+      - ./SharedAccountBackend:/app  # для разработки - монтируем код
       - ~/.nuget/packages:/root/.nuget/packages  # кэш nuget
 
   db:
@@ -27,6 +28,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:     
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shared_account"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 
   pgadmin:
     image: dpage/pgadmin4

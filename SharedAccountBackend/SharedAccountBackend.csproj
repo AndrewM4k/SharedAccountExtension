@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Version>0.0.2.0</Version>
     <AssemblyVersion>0.0.2.0</AssemblyVersion>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

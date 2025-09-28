@@ -17,10 +17,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.ListenLocalhost(5000); // HTTP
-    serverOptions.ListenLocalhost(5001, listenOptions =>
-    { // HTTPS
-        listenOptions.UseHttps();
-    });
+    //serverOptions.ListenLocalhost(5001, listenOptions =>
+    //{ // HTTPS
+    //    listenOptions.UseHttps();
+    //});
 });
 
 // Добавление сервисов
@@ -171,7 +171,7 @@ app.Use(async (context, next) =>
 
     await next();
 });
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
