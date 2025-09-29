@@ -48,7 +48,7 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
           {actions && actions.length === 0 ? (
             <tr>
               <td colSpan={5} className="no-data">
-                Нет сбоытий
+                Нет событий
               </td>
             </tr>
           ) : ( actions &&

@@ -169,7 +169,7 @@ namespace SharedAccountBackend.Controllers
                 {
                     query = query.Where(a =>
                         a.LotNumber.Contains(search) ||
-                        a.Details.Contains(search));
+                        a.Commentary.Contains(search));
                 }
 
                 // Получаем общее количество для пагинации

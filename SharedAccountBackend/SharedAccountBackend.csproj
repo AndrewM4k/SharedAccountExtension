@@ -3,8 +3,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>0.0.2.0</Version>
-    <AssemblyVersion>0.0.2.0</AssemblyVersion>
+    <Version>0.0.2.1</Version>
+    <AssemblyVersion>0.0.2.1</AssemblyVersion>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>

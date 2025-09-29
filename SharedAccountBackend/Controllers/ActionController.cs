@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SharedAccountBackend.Data;
 using SharedAccountBackend.Dtos;
+using SharedAccountBackend.Enums;
 using SharedAccountBackend.Models;
 using System.Security.Claims;
 
@@ -104,18 +105,16 @@ namespace SharedAccountBackend.Controllers
 
         private async Task ProcessEvent(string userId, ActionDto eventDto)
         {
-            switch (eventDto.ActionType)
+            switch ((ActionTypes)Enum.Parse(typeof(ActionTypes), eventDto.ActionType))
             {
-                case "BID_ACTION":
+                case (ActionTypes.Bid):
                     var bidEvent = new CopartAction()
                     {
                         UserId = userId,
                         ActionType = eventDto.ActionType,
-                        Action = eventDto.Action,
                         LotNumber = eventDto.LotNumber,
                         LotName = eventDto.LotName,
-                        Details = eventDto.Details,
-                        BidAmount = eventDto.BidAmount,
+                        Commentary = eventDto.Commentary,
                         UserBidAmount = eventDto.UserBidAmount,
                         PageUrl = eventDto.PageUrl,
                         ActionTime = TimeZoneInfo.ConvertTimeToUtc(DateTime.Parse(eventDto.Timestamp)),
@@ -124,14 +123,12 @@ namespace SharedAccountBackend.Controllers
                     await _context.CopartActions.AddAsync(bidEvent);
                     break;
 
-                case "PAGE_VIEW":
+                case ActionTypes.View:
                     var pageViewEvent = new PageViewAction
                     {
                         UserId = userId,
                         ActionType = eventDto.ActionType,
                         PageUrl = eventDto.PageUrl,
-                        PageTitle = eventDto.PageTitle,
-                        Referrer = eventDto.Referrer,
                         Timestamp = TimeZoneInfo.ConvertTimeToUtc(DateTime.Parse(eventDto.Timestamp)),
                         CreatedAt = DateTime.UtcNow
                     };

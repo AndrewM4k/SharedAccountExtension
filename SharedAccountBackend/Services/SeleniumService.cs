@@ -314,7 +314,21 @@ namespace SharedAccountBackend.Services
             ((IJavaScriptExecutor)_driver).ExecuteScript($"window.scrollBy(0, {scrollAmount})");
             await Task.Delay(random.Next(500, 1200));
         }
-
+        private bool IsActionsAvailable()
+        {
+            try
+            {
+                // Пробуем небольшое безопасное перемещение
+                new Actions(_driver)
+                    .MoveByOffset(1, 0)
+                    .Perform();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
         private void TryAcceptCookies()
         {
             try

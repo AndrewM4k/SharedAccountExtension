@@ -20,30 +20,50 @@ const Dashboard: React.FC = () => {
   const fetchActions = async () => {
     setLoading(true);
     
-    await apiService.check();
+    const accessTokenResponse = await apiService.check();
+    console.log("accessTokenResponse: ", accessTokenResponse);
+
+    if (accessTokenResponse.status !== 200) {
+      const refreshResponse = await apiService.refreshToken();
+      console.log("refreshResponse: ", refreshResponse);
+      if (refreshResponse.status !== 200) {
+        throw new Error('Refresh failed');
+      }
+      // 3. Повторно проверяем после обновления
+      const accessTokenResponse = await apiService.check();
+      console.log("accessTokenResponse: ", accessTokenResponse);
+      
+      if (accessTokenResponse.status !== 200) {
+        throw new Error('Still not authenticated after refresh');
+      }
+    }
+
     try {
-      const token = localStorage.getItem('token');
-      const query = new URLSearchParams({
-        page: filters.page.toString(),
-        pageSize: filters.pageSize.toString(),
-        ...(filters.actionType && { actionType: filters.actionType }),
-        ...(filters.search && { search: filters.search }),
-      }).toString();
+      // const token = localStorage.getItem('token');
+      // const query = new URLSearchParams({
+      //   page: filters.page.toString(),
+      //   pageSize: filters.pageSize.toString(),
+      //   ...(filters.actionType && { actionType: filters.actionType }),
+      //   ...(filters.search && { search: filters.search }),
+      // }).toString();
 
-      const response = await fetch(
-        `https://localhost:5001/api/actions?${query}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // const response = await fetch(
+      //   `https://localhost:5001/api/actions?${query}`,
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   }
+      // );
 
-      if (!response.ok) throw new Error('Failed to fetch actions');
+      const response = await apiService.getActions();
 
-      const data: ApiResponse<CopartAction[]> = await response.json();
-      setActions(data.data);
-      setTotalCount(data.totalCount);
+      if (response.status !== 200) throw new Error('Failed to fetch actions');
+
+      console.log("response.data ", response.data);
+
+      setActions(response.data);
+      setTotalCount(response.data.totalCount);
     } catch (error) {
       console.error('Error fetching actions:', error);
     } finally {

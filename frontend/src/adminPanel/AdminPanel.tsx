@@ -24,14 +24,6 @@ const AdminPanel = () => {
         const accessTokenResponse = await apiService.check();
 
         if (accessTokenResponse.status !== 200) {
-          // 2. Если access token невалиден, пробуем обновить токены
-          // const refreshResponse = await fetch(
-          //   'https://localhost:5001/api/auth/refresh-token',
-          //   {
-          //     method: 'POST',
-          //     credentials: 'include',
-          //   }
-          // )
           const refreshResponse = await apiService.refreshToken();
 
           if (refreshResponse.status !== 200) {
@@ -136,28 +128,28 @@ const AdminPanel = () => {
 
   const deleteUser = async (user: any) => {
     if (window.confirm(`Вы уверены, что хотите удалить пользователя: ${user.username}?`)) {
-      await fetch(`https://localhost:5001/api/admin/users/${user.id}`, {
-        method: 'DELETE',
-      });
+      const response = await apiService.deleteUser(user.id)
+      console.log("response: ", response);
       fetchUsers();
     }
   };
 
-  const refreshPassword = async (id: number) => {
-    {
-      var refreshPassword = {
-        username: '',
-        newPassword: '',
-      };
+  // const refreshPassword = async (id: number) => {
+  //   {
+  //     var refreshPassword = {
+  //       username: '',
+  //       newPassword: '',
+  //     };
 
-      await fetch(`https://localhost:5001/api/admin/users/${id}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify(refreshPassword),
-      });
-      fetchUsers();
-    }
-  };
+  //     await fetch(`https://localhost:5001/api/admin/users/${id}`, {
+  //       method: 'PUT',
+  //       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+  //       body: JSON.stringify(refreshPassword),
+  //     });
+  //     fetchUsers();
+  //   }
+  // };
+
   return (
     <div className="admin-container">
       <h1>Менеджмент пользователей</h1>

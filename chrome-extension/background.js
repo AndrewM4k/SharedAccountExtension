@@ -355,20 +355,12 @@ async function processQueue() {
     actionsToSend[index] = {
       actionType: item.actionType ? item.actionType : "",
       lotNumber: item.lotNumber ? item.lotNumber : "",
-      details: item.details ? item.details : "",
+      commentary: item.commentary ? item.commentary : "",
       timestamp: item.timestamp ? item.timestamp : "",
       url: item.url ? item.url : "",
-      bidAmount: item.bidAmount ? item.bidAmount : "",
-      action: item.action ? item.action : "",
       lotName: item.lotName ? item.lotName : "",
       userBidAmount: item.userBidAmount ? item.userBidAmount : "",
       pageUrl: item.pageUrl ? item.pageUrl : "",
-      pageTitle: item.pageTitle ? item.pageTitle : "",
-      referrer: item.referrer ? item.referrer : "",
-      elementText: item.elementText ? item.elementText : "",
-      elementClasses: item.elementClasses ? item.elementClasses : "",
-      userEmail: item.userEmail ? item.userEmail : "",
-      extensionVersion: item.extensionVersion ? item.extensionVersion : "",
     };
   });
 

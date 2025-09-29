@@ -69,6 +69,12 @@ export function getUsers() {
   });
 }
 
+export function getActions() {
+  return axios.get(`${API_BASE}/actions`, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 export function registerUser(newUser: any) {
   return axios.post(
     `${API_BASE}/admin/users/register`, 
@@ -82,7 +88,6 @@ export function registerUser(newUser: any) {
 }
 
 export function deleteUser(userId: any) {
-  return axios.delete(
-    `${API_BASE}/admin/users/${userId}`);
+  return axios.delete(`${API_BASE}/admin/users/${userId}`);
 }
 

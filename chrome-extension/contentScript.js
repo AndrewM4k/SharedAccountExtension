@@ -185,21 +185,14 @@ document.addEventListener("click", function (event) {
   ) {
     // 3. Собираем данные (их тоже нужно извлечь со страницы)
     const actionData = {
-      actionType: "BID_ACTION",
-      action: "Click_Button",
-      lotNumber: "lotNumber",
-      bidAmount: "bidAmount",
+      actionType: "Bid",
+      lotNumber: "Test Lot",
+      bidAmount: "0",
       pageUrl: "https://www.copart.com/",
       timestamp: new Date().toISOString(),
-      details: "string",
-      lotName: "string",
-      userBidAmount: "string",
-      pageTitle: "string",
-      referrer: "string",
-      elementText: "string",
-      elementClasses: "string",
-      userEmail: "string",
-      extensionVersion: "string",
+      commentary: "No comment",
+      lotName: "test",
+      userBidAmount: "0",
     };
 
     console.log("Bid button clicked, data:", actionData);
