@@ -1,5 +1,7 @@
 import axios from 'axios';
-const API_BASE = 'https://localhost:5001/api';
+import { config } from './config';
+
+const API_BASE = config.apiBaseUrl;
 
 export const login = (username: string, password: string) => {
   return axios.post(
@@ -24,9 +26,9 @@ export const logout = () => {
   );
 };
 
-export const сopartAuth = () => {
+export const copartAuth = () => {
   return axios.post(
-    `${API_BASE}/CopartAuth/auth`,
+    `${API_BASE}/copartAuth/auth`,
     {
       withCredentials: true,
       headers: {

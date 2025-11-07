@@ -12,7 +12,13 @@ async function copyExtensionFiles() {
   // 1. Копируем результат сборки фронтенда
   await fs.copy(frontendDist, extensionDir, { overwrite: true });
 
-  // 2. Копируем специфичные файлы расширения
+  // 2. Копируем специфичные файлы расширения из dist (compiled TypeScript)
+  const extensionFilesDir = path.join(projectRoot, 'extention-files'); // Note: keeping typo for now to match existing folder
+  const extensionDistDir = path.join(extensionFilesDir, 'dist');
+  
+  // Check if dist exists (TypeScript compiled), otherwise use source files
+  const sourceDir = (await fs.pathExists(extensionDistDir)) ? extensionDistDir : extensionFilesDir;
+  
   const extensionFiles = [
     'manifest.json',
     'background.js',
@@ -22,9 +28,9 @@ async function copyExtensionFiles() {
     // 'icons/icon48.png',
     // 'icons/icon128.png',
   ];
-
+  
   for (const file of extensionFiles) {
-    const source = path.join(projectRoot, 'extention-files', file);
+    const source = path.join(sourceDir, file);
     const dest = path.join(extensionDir, file);
 
     if (await fs.pathExists(source)) {

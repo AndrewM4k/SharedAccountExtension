@@ -4,7 +4,8 @@
   "version": "0.0.2.1",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && tsc scripts/copy-extension.ts --outDir scripts/dist && node scripts/dist/copy-extension.js",
+    "build": "tsc && vite build && npm run build:extension && tsc scripts/copy-extension.ts --outDir scripts/dist && node scripts/dist/copy-extension.js",
+    "build:extension": "tsc scripts/build-extension.ts --outDir scripts/dist && node scripts/dist/build-extension.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "update-extension": "tsc scripts/update-extension-files.ts --outDir scripts/dist && node scripts/dist/update-extension-files.js"

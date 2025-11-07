@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import './Popup.css';
 import Alert from '../alert/Alert';
 import React from 'react';
-import * as apiService from '.././apiService';
+import * as apiService from '../apiService';
 
 const Popup = () => {
   const [username, setUsername] = useState('');
@@ -93,7 +93,7 @@ const Popup = () => {
       if (response.status === 200) {
         setIsAuthorized(false);
         // Получаем информацию о пользователе и устанавливаем ее
-        await CopartAuth();
+        await copartAuth();
       checkAuthStatus();
       }
     } catch (err: any) {
@@ -116,7 +116,7 @@ const Popup = () => {
   };
 
 
-  async function CopartAuth() {
+  async function copartAuth() {
     try {
       showStatus('Выполняется авторизация...');
 
@@ -184,7 +184,7 @@ const Popup = () => {
     chrome.runtime.sendMessage({ 
         action: 'clearCookies' 
       }); 
-    await CopartAuth();    
+    await copartAuth();    
     setIsLoading(false);
   }
 

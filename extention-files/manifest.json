@@ -12,7 +12,6 @@
     "tabs",
     "scripting",
     "activeTab",
-    "cookies",
     "webRequest",
     "webRequestBlocking",
     "*://localhost/*",
