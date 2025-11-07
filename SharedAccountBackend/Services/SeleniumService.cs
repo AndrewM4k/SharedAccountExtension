@@ -112,9 +112,8 @@ namespace SharedAccountBackend.Services
                 var passwordField = WaitForElement(By.Name("password"), TimeSpan.FromSeconds(30));
                 var loginButton = WaitForElement(By.CssSelector("button[data-uname='loginSigninmemberbutton']"), TimeSpan.FromSeconds(30));
 
-
                 await HumanLikeTextEntry(usernameField, username);
-                await Task.Delay(800 + new Random().Next(200, 600));
+                await Task.Delay(800 + new Random().Next(200, 600)); 
                 await HumanLikeTextEntry(passwordField, password);
 
                 //usernameField.SendKeys(username);
@@ -287,15 +286,6 @@ namespace SharedAccountBackend.Services
             // Случайные движения мыши
             var actions = new Actions(_driver);
             var random = new Random();
-
-            //// Случайное перемещение по странице
-            //for (int i = 0; i < 3; i++)
-            //{
-            //    int x = random.Next(100, 500);
-            //    int y = random.Next(100, 500);
-            //    actions.MoveByOffset(x, y).Perform();
-            //    await Task.Delay(random.Next(300, 800));
-            //}
             var humanMover = new HumanLikeMouseMover(_driver);
             for (int i = 0; i < 5; i++)
             {
@@ -372,8 +362,9 @@ namespace SharedAccountBackend.Services
             try
             {
                 var screenshot = ((ITakesScreenshot)_driver).GetScreenshot();
-                var fileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{name}.png";
-                screenshot.SaveAsFile(fileName);
+                var fileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{name}.png"; 
+                var folder = "Screenshots";
+                screenshot.SaveAsFile(Path.Combine(folder, fileName));
                 _logger.LogInformation($"Скриншот сохранен: {fileName}");
             }
             catch (Exception ex)

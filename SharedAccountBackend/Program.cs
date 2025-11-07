@@ -6,12 +6,16 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SharedAccountBackend;
 using SharedAccountBackend.Data;
+using SharedAccountBackend.Business.Interfaces;
+using SharedAccountBackend.Business.Services;
 using SharedAccountBackend.Hubs;
+using SharedAccountBackend.Options;
+using SharedAccountBackend.Repositories;
 using SharedAccountBackend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Настройка Kestrel (HTTPS)
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Kestrel (HTTPS)
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.ListenLocalhost(5000); // HTTP
@@ -21,7 +25,7 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     });
 });
 
-// Добавление сервисов
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -39,7 +43,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnMessageReceived = context =>
             {
-                // Берем токен из куки
+                // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
                 context.Token = context.Request.Cookies["access_token"];
                 return Task.CompletedTask;
             }
@@ -50,9 +54,33 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "API", Version = "v1" });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme (Example: 'Bearer 12345abcdef')",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
 });
 
-// Database (требует PostgreSQL в appsettings.json)
+// Database (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ PostgreSQL пїЅ appsettings.json)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL")
     //,
@@ -61,25 +89,28 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddSignalR();
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("ConfiguredCors", policy =>
     {
-        policy.WithOrigins(
-                "chrome-extension://imambnhajobfgoahcheibndblofimcof", // Ваш ID расширения
-                "chrome-extension://gomflnllnhfmojochmdhldmdiglhobej", // Ваш ID расширения
-                "https://localhost:5001",
-                "http://localhost:5000"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .WithExposedHeaders("X-XSRF-TOKEN", "Set-Cookie")
-            .AllowCredentials()
+        policy.WithExposedHeaders("X-XSRF-TOKEN", "Set-Cookie")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
 
-            //.SetIsOriginAllowed(origin =>
-            //    origin.Contains("chrome-extension://") ||
-            //    origin.StartsWith("http://localhost"))
-            ;
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .SetIsOriginAllowedToAllowWildcardSubdomains()
+                  .AllowCredentials();
+        }
+        else
+        {
+            policy.AllowAnyOrigin();
+        }
     });
 });
 builder.Services.AddHttpClient("CopartClient", client =>
@@ -100,33 +131,12 @@ builder.Services.AddHttpClient("CopartClient", client =>
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<SeleniumService>();
 builder.Services.AddSingleton<CryptoService>();
-builder.Services.AddSwaggerGen(c =>
-    {
-        c.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
-        });
-
-        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Description = "JWT Authorization header using the Bearer scheme (Example: 'Bearer 12345abcdef') AdminIsGod InitialPassword300_500$ ",
-            Name = "Authorization",
-            In = ParameterLocation.Header,
-            Type = SecuritySchemeType.ApiKey,
-            Scheme = "Bearer"
-        });
-    }
-);
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<ICopartActionRepository, CopartActionRepository>();
+builder.Services.AddScoped<IPageViewActionRepository, PageViewActionRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IActionService, ActionService>();
+builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection("SeedData"));
 
 var app = builder.Build();
 
@@ -145,30 +155,12 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
         c.ConfigObject.AdditionalItems["requestOptions"] = new
         {
-            credentials = "include" // Разрешить отправку кук
+            credentials = "include" // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         };
     });
 }
 app.UseRouting();
-app.UseCors("AllowAll");
-app.Use(async (context, next) =>
-{
-    context.Response.Headers.Add("Access-Control-Allow-Origin",
-        context.Request.Headers["Origin"]);
-    context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
-
-    if (context.Request.Method == "OPTIONS")
-    {
-        context.Response.Headers.Add("Access-Control-Allow-Methods",
-            "GET, POST, PUT, DELETE, OPTIONS");
-        context.Response.Headers.Add("Access-Control-Allow-Headers",
-            "Content-Type, Authorization");
-        context.Response.StatusCode = 200;
-        return;
-    }
-
-    await next();
-});
+app.UseCors("ConfiguredCors");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -2,10 +2,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SharedAccountBackend.Data;
+using SharedAccountBackend.Business.Interfaces;
+using SharedAccountBackend.Business.Models;
 using SharedAccountBackend.Helpers;
-using SharedAccountBackend.Services;
 
 namespace SharedAccountBackend.Controllers
 {
@@ -13,17 +12,18 @@ namespace SharedAccountBackend.Controllers
     [Route("api/auth")]
     public class AuthController : ControllerBase
     {
-        private readonly AppDbContext _db;
-        private readonly IConfiguration _config;
+        private readonly IAuthService _authService;
+        private readonly IActionService _actionService;
         private readonly ILogger<AuthController> _logger;
-        private readonly TokenService _tokenService;
 
-        public AuthController(AppDbContext db, IConfiguration config, ILogger<AuthController> logger, TokenService tokenService)
+        public AuthController(
+            IAuthService authService,
+            IActionService actionService,
+            ILogger<AuthController> logger)
         {
-            _db = db;
-            _config = config;
+            _authService = authService;
+            _actionService = actionService;
             _logger = logger;
-            _tokenService = tokenService;
         }
 
         [HttpPost("login")]
@@ -33,18 +33,14 @@ namespace SharedAccountBackend.Controllers
             {
                 return BadRequest(new { message = "Invalid request" });
             }
-            var user = _db.Users.FirstOrDefault(u => u.Username == request.Email);
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-                return Unauthorized(new { message = "Invalid username or password" });
+            var result = await _authService.LoginAsync(request.Email, request.Password);
 
-            var accessToken = _tokenService.GenerateAccessToken(user);
-            var refreshToken = _tokenService.GenerateRefreshToken();
+            if (!result.Success)
+            {
+                return Unauthorized(new { message = result.ErrorMessage });
+            }
 
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiry = SettingConstants.RefreshTokenExpire();
-            await _db.SaveChangesAsync();
-
-            SetTokenCookies(accessToken, refreshToken);
+            SetTokenCookies(result);
 
             return Ok(new { message = "Login successful" });
         }
@@ -55,48 +51,39 @@ namespace SharedAccountBackend.Controllers
         {
             var refreshToken = Request.Cookies["refresh_token"];
 
-            if (string.IsNullOrEmpty(refreshToken))
-                return BadRequest("Refresh token is required");
-            // Ищем пользователя по refresh token
-            var user = await _db.Users
-                .FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+            var result = await _authService.RefreshTokenAsync(refreshToken);
 
-            if (user == null || user.RefreshTokenExpiry <= DateTime.UtcNow)
+            if (!result.Success)
             {
-                return Unauthorized("Invalid refresh token");
+                return Unauthorized(result.ErrorMessage ?? "Invalid refresh token");
             }
 
-            // Генерируем новую пару токенов
-            var newAccessToken = _tokenService.GenerateAccessToken(user);
-            var newRefreshToken = _tokenService.GenerateRefreshToken();
-
-            // Обновляем пользователя
-            user.RefreshToken = newRefreshToken;
-            user.RefreshTokenExpiry = SettingConstants.RefreshTokenExpire();
-            await _db.SaveChangesAsync();
-
-            // Устанавливаем новые куки
-            SetTokenCookies(newAccessToken, newRefreshToken);
+            SetTokenCookies(result);
 
             return Ok(new
             {
                 message = "Tokens refreshed successfully",
-                access_token = newAccessToken // Для дебага
+                access_token = result.AccessToken
             });
         }
 
-        private void SetTokenCookies(string accessToken, string? refreshToken)
+        private void SetTokenCookies(AuthResult result)
         {
+            if (string.IsNullOrWhiteSpace(result.AccessToken) || string.IsNullOrWhiteSpace(result.RefreshToken))
+            {
+                _logger.LogError("Attempted to set cookies with missing tokens.");
+                throw new InvalidOperationException("Access and refresh tokens are required.");
+            }
 
             bool isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
 
             Response.Cookies.Delete("access_token");
             Response.Cookies.Delete("refresh_token");
 
-            Thread.Sleep(500);
+            var refreshTokenExpiry = result.RefreshTokenExpiry ?? SettingConstants.RefreshTokenExpire();
 
             // Access token cookie
-            Response.Cookies.Append("access_token", accessToken, new CookieOptions
+            Response.Cookies.Append("access_token", result.AccessToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
@@ -108,12 +95,12 @@ namespace SharedAccountBackend.Controllers
             });
 
             // Refresh token cookie
-            Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions
+            Response.Cookies.Append("refresh_token", result.RefreshToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
-                Expires = SettingConstants.RefreshTokenExpire(),
+                Expires = refreshTokenExpiry,
                 Domain = isDevelopment ? null : SettingConstants.Domain,
                 Path = "/",
                 IsEssential = true
@@ -125,19 +112,7 @@ namespace SharedAccountBackend.Controllers
         {
             var refreshToken = Request.Cookies["refresh_token"];
 
-            if (!string.IsNullOrEmpty(refreshToken))
-            {
-                var user = await _db.Users
-                    .FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
-
-                if (user != null)
-                {
-                    // Удаляем refresh token из БД
-                    user.RefreshToken = null;
-                    user.RefreshTokenExpiry = null;
-                    await _db.SaveChangesAsync();
-                }
-            }
+            await _authService.LogoutAsync(refreshToken);
 
             // Удаляем куки
             Response.Cookies.Delete("access_token");
@@ -156,38 +131,14 @@ namespace SharedAccountBackend.Controllers
         {
             try
             {
-                var query = _db.CopartActions.AsQueryable();
-
-                // Фильтрация по типу действия
-                if (!string.IsNullOrEmpty(actionType))
-                {
-                    query = query.Where(a => a.ActionType == actionType);
-                }
-
-                // Поиск по номеру лота или деталям
-                if (!string.IsNullOrEmpty(search))
-                {
-                    query = query.Where(a =>
-                        a.LotNumber.Contains(search) ||
-                        a.Commentary.Contains(search));
-                }
-
-                // Получаем общее количество для пагинации
-                var totalCount = await query.CountAsync();
-
-                // Применяем пагинацию
-                var actions = await query
-                    .OrderByDescending(a => a.ActionTime)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
+                var result = await _actionService.GetActionsAsync(page, pageSize, actionType, search);
 
                 return Ok(new
                 {
-                    Data = actions,
-                    TotalCount = totalCount,
-                    Page = page,
-                    PageSize = pageSize
+                    result.Data,
+                    result.TotalCount,
+                    result.Page,
+                    result.PageSize
                 });
             }
             catch (Exception ex)
@@ -210,13 +161,12 @@ namespace SharedAccountBackend.Controllers
             if (!string.IsNullOrEmpty(refreshToken))
             {
                 // Проверяем в базе
-                var user = _db.Users.FirstOrDefault(u =>
-                    u.RefreshToken == refreshToken &&
-                    u.RefreshTokenExpiry > DateTime.UtcNow);
+                var result = await _authService.RefreshTokenAsync(refreshToken);
 
-                if (user != null)
+                if (result.Success)
                 {
-                    Response.Cookies.Delete("access_token");
+                    SetTokenCookies(result);
+                    return Ok(new { isAuthenticated = true });
                 }
             }
 
@@ -225,10 +175,15 @@ namespace SharedAccountBackend.Controllers
 
         [HttpGet("me")]
         [Authorize]
-        public IActionResult GetCurrentUser()
+        public async Task<IActionResult> GetCurrentUser()
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var user = _db.Users.FirstOrDefault(u => u.Id == userId);
+            var user = await _authService.GetUserByIdAsync(userId);
+
+            if (user is null)
+            {
+                return NotFound();
+            }
 
             return Ok(new
             {

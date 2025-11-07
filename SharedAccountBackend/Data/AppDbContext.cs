@@ -11,15 +11,5 @@ namespace SharedAccountBackend.Data
         public DbSet<CopartAction> CopartActions { get; set; }
         public DbSet<PageViewAction> PageViewActions { get; set; }
         public DbSet<SharedAccount> SharedAccounts { get; set; }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
-                .Build();
-            //"Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=mac1475963"
-            optionsBuilder.UseNpgsql(configuration.GetConnectionString("PostgreSQL"));
-        }
     }
 }

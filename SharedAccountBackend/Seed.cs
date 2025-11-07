@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SharedAccountBackend.Data;
 using SharedAccountBackend.Enums;
 using SharedAccountBackend.Models;
+using SharedAccountBackend.Options;
 using SharedAccountBackend.Services;
 
 namespace SharedAccountBackend
@@ -12,42 +14,62 @@ namespace SharedAccountBackend
         {
             using var scope = services.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var cs = scope.ServiceProvider.GetRequiredService<CryptoService>();
+            var cryptoService = scope.ServiceProvider.GetRequiredService<CryptoService>();
+            var seedOptions = scope.ServiceProvider.GetRequiredService<IOptions<SeedOptions>>().Value;
+            var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger("DataSeeder");
 
-            var credentialsExists = await context.SharedAccounts.AnyAsync(u => u.IsActive);
-
-            if (!credentialsExists)
+            if (seedOptions.DefaultSharedAccount?.Enabled == true)
             {
-                var password = "Kentucky$9598";
-                var login = "331271";
-
-                var initialCredentials = new SharedAccount
+                if (string.IsNullOrWhiteSpace(seedOptions.DefaultSharedAccount.Login) ||
+                    string.IsNullOrWhiteSpace(seedOptions.DefaultSharedAccount.Password))
                 {
-                    IsActive = true,
-                    CopartLogin = login,
-                    CopartPassword = cs.Encrypt(password)
-                };
+                    logger.LogWarning("Default shared account seeding is enabled but login or password is missing. Skipping shared account seed.");
+                }
+                else
+                {
+                    var credentialsExists = await context.SharedAccounts.AnyAsync(u => u.IsActive);
 
-                context.SharedAccounts.Add(initialCredentials);
-                await context.SaveChangesAsync();
+                    if (!credentialsExists)
+                    {
+                        var initialCredentials = new SharedAccount
+                        {
+                            IsActive = true,
+                            CopartLogin = seedOptions.DefaultSharedAccount.Login!,
+                            CopartPassword = cryptoService.Encrypt(seedOptions.DefaultSharedAccount.Password!)
+                        };
+
+                        context.SharedAccounts.Add(initialCredentials);
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("Seeded default shared account credentials.");
+                    }
+                }
             }
 
-            const string adminUsername = "AdminIsGod";
-            var adminExists = await context.Users.AnyAsync(u => u.Username == adminUsername);
-            if (!adminExists)
+            if (seedOptions.Admin?.Enabled == true)
             {
-                var password = "InitialPassword300_500$";
-                Console.WriteLine($"Admin password: {password}"); // Для начального использования
-
-                var admin = new User
+                if (string.IsNullOrWhiteSpace(seedOptions.Admin.Username) ||
+                    string.IsNullOrWhiteSpace(seedOptions.Admin.Password))
                 {
-                    Username = adminUsername,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-                    Role = Role.Admin,
-                };
+                    logger.LogWarning("Admin seeding is enabled but username or password is missing. Skipping admin seed.");
+                }
+                else
+                {
+                    var adminExists = await context.Users.AnyAsync(u => u.Username == seedOptions.Admin.Username);
+                    if (!adminExists)
+                    {
+                        var admin = new User
+                        {
+                            Username = seedOptions.Admin.Username!,
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedOptions.Admin.Password!),
+                            Role = Role.Admin,
+                        };
 
-                context.Users.Add(admin);
-                await context.SaveChangesAsync();
+                        context.Users.Add(admin);
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("Seeded default admin user {Admin}.", seedOptions.Admin.Username);
+                    }
+                }
             }
         }
     }
