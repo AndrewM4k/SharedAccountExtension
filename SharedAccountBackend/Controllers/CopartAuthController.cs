@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using SharedAccountBackend.Data;
-using SharedAccountBackend.Dtos;
 using SharedAccountBackend.Services;
 
 

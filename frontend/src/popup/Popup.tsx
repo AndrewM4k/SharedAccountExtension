@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react';
 import axios from 'axios';
 import { createRoot } from 'react-dom/client';
@@ -11,8 +13,8 @@ const Popup = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isAuthorized, setIsAuthorized] = useState<Boolean | null>(null);
-  const [error, setError] = useState<String | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState('');
 
   React.useEffect(()=>{
@@ -91,29 +93,7 @@ const Popup = () => {
       if (response.status === 200) {
         setIsAuthorized(false);
         // Получаем информацию о пользователе и устанавливаем ее
-        try {
-          showStatus('Выполняется авторизация...');
-          
-          // Просто отправляем запрос в background script
-          const response = await chrome.runtime.sendMessage({
-              action: 'authAndSetCookies'
-          });
-          
-          if (response && response.success) {
-              showStatus('Авторизация успешна!');
-              
-              // Перенаправляем на Copart
-              setTimeout(() => {
-                  chrome.tabs.create({ url: 'https://www.copart.com' });
-                  window.close();
-              }, 1000);
-          } else {
-              showStatus('Ошибка: ' + (response?.error || 'Неизвестная ошибка'));
-          }
-        } catch (error:any) {
-            console.error('Ошибка:', error);
-            showStatus('Ошибка: ' + error.message);
-        }
+        await CopartAuth();
       checkAuthStatus();
       }
     } catch (err: any) {
@@ -135,8 +115,35 @@ const Popup = () => {
     }
   };
 
+
+  async function CopartAuth() {
+    try {
+      showStatus('Выполняется авторизация...');
+
+      // Просто отправляем запрос в background script
+      const response = await chrome.runtime.sendMessage({
+        action: 'authAndSetCookies'
+      });
+
+      if (response && response.success) {
+        showStatus('Авторизация успешна!');
+
+        // Перенаправляем на Copart
+        setTimeout(() => {
+          chrome.tabs.create({ url: 'https://www.copart.com' });
+          window.close();
+        }, 1000);
+      } else {
+        showStatus('Ошибка: ' + (response?.error || 'Неизвестная ошибка'));
+      }
+    } catch (error: any) {
+      console.error('Ошибка:', error);
+      showStatus('Ошибка: ' + error.message);
+    }
+  }
+
   // Функция для отображения статуса
-  function showStatus(message: String) {
+  function showStatus(message: string) {
     //document.getElementById('status').textContent = message;
     console.log("message: ", message);
   }
@@ -172,6 +179,15 @@ const Popup = () => {
     );
   }
 
+  async function ReloginCopart() {
+    setIsLoading(true);
+    chrome.runtime.sendMessage({ 
+        action: 'clearCookies' 
+      }); 
+    await CopartAuth();    
+    setIsLoading(false);
+  }
+
   return (
     <div className="popup-container">
       {isLoggedIn ? (
@@ -200,6 +216,10 @@ const Popup = () => {
             </button>
           )}
           
+            <button onClick={ReloginCopart} className="btn btn-primary">
+              Повторная авторизация на Copart
+            </button>
+
           <div className="logged-btn">
             <button
               onClick={handleLogout}
@@ -255,3 +275,4 @@ const Popup = () => {
 
 const root = createRoot(document.getElementById('root')!);
 root.render(<Popup />);
+
