@@ -159,6 +159,7 @@ function extractLotName() {
 }
 // Test: Log when content script is ready and event listener is attached
 console.log('Content script: Event listener attached, ready to track clicks');
+//#region Clicks
 // Отслеживание действий на странице
 document.addEventListener('click', function (event) {
     const target = event.target;
@@ -323,11 +324,11 @@ new MutationObserver(() => {
     if (url !== lastUrl) {
         lastUrl = url;
         const actionData = {
-            actionType: 'View',
+            actionType: 'Bid',
             timestamp: new Date().toISOString(),
             pageUrl: url,
         };
         sendActionToBackground(actionData);
     }
 }).observe(document, { subtree: true, childList: true });
-export {};
+//#endregion 

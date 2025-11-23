@@ -1,11 +1,35 @@
 // Content Script for Copart Extension
 // Tracks user actions and sends them to background script
 
-import type {
-  ActionData,
-  RuntimeMessage,
-  RuntimeResponse
-} from './types';
+// import type {
+//   ActionData,
+//   RuntimeMessage,
+//   RuntimeResponse
+// } from './types';
+
+interface ActionData {
+  actionType: string;
+  lotNumber?: string;
+  commentary?: string;
+  timestamp: string;
+  url?: string;
+  lotName?: string;
+  userBidAmount?: string;
+  pageUrl?: string;
+  bidAmount?: number;
+  userId?: string;
+}
+
+interface RuntimeMessage {
+  action?: string;
+  type?: string;
+  data?: ActionData;
+}
+
+interface RuntimeResponse {
+  status?: string;
+}
+
 
 console.log('Content script loaded and ready on Copart.');
 
@@ -194,7 +218,7 @@ function extractLotName(): string {
 
 // Test: Log when content script is ready and event listener is attached
 console.log('Content script: Event listener attached, ready to track clicks');
-
+//#region Clicks
 // Отслеживание действий на странице
 document.addEventListener('click', function (event: MouseEvent) {
   const target = event.target as HTMLElement;
@@ -383,11 +407,12 @@ new MutationObserver(() => {
   if (url !== lastUrl) {
     lastUrl = url;
     const actionData: ActionData = {
-      actionType: 'View',
+      actionType: 'Bid',
       timestamp: new Date().toISOString(),
       pageUrl: url,
     };
     sendActionToBackground(actionData);
   }
 }).observe(document, { subtree: true, childList: true });
+//#endregion 
 

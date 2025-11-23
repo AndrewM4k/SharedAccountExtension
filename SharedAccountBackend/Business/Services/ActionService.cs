@@ -92,7 +92,8 @@ namespace SharedAccountBackend.Business.Services
                         shouldSaveCopartActions = true;
                         break;
                     case ActionTypes.View:
-                        shouldSavePageViewActions = true;
+                        shouldSaveCopartActions = true;
+                        //shouldSavePageViewActions = true;
                         break;
                 }
             }
@@ -153,14 +154,26 @@ namespace SharedAccountBackend.Business.Services
                     break;
 
                 case ActionTypes.View:
-                    await _pageViewActionRepository.AddAsync(new PageViewAction
+                    await _copartActionRepository.AddAsync(new CopartAction
                     {
                         UserId = userId,
                         ActionType = actionDto.ActionType,
+                        LotNumber = actionDto.LotNumber,
+                        LotName = actionDto.LotName,
+                        Commentary = actionDto.Commentary,
+                        UserBidAmount = actionDto.UserBidAmount,
                         PageUrl = actionDto.PageUrl,
-                        Timestamp = timestamp,
+                        ActionTime = timestamp,
                         CreatedAt = DateTime.UtcNow
                     });
+                    //await _pageViewActionRepository.AddAsync(new PageViewAction
+                    //{
+                    //    UserId = userId,
+                    //    ActionType = actionDto.ActionType,
+                    //    PageUrl = actionDto.PageUrl,
+                    //    Timestamp = timestamp,
+                    //    CreatedAt = DateTime.UtcNow
+                    //});
                     break;
 
                 default:
