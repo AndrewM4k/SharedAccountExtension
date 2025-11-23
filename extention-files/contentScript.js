@@ -1,3 +1,7 @@
+// ⚠️ DEPRECATED: This file is kept for reference only.
+// The active source is contentScript.ts which gets compiled to dist/contentScript.js
+// Edit contentScript.ts instead of this file.
+
 // Функция для отправки сообщения в background script
 // function sendBidDataToBackground(bidData) {
 //   chrome.runtime.sendMessage(

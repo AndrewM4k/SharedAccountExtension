@@ -1,4 +1,3 @@
-"use strict";
 // Extension Background Script
 // This handles authentication, cookie management, and action queuing
 // Get API base URL from chrome.storage or use default
@@ -332,12 +331,25 @@ chrome.runtime.onSuspend.addListener(async () => {
 });
 // Слушатель сообщений от content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('Background: Message received:', message);
     if (message.type === 'BID_PLACED' && message.data) {
-        console.log('Received action from content script:', message.data);
-        // Добавляем действие в очередь
-        addToQueue(message.data);
-        sendResponse({ status: 'queued' });
+        console.log('Background: Received BID_PLACED action from content script:', message.data);
+        try {
+            // Добавляем действие в очередь
+            addToQueue(message.data);
+            console.log('Background: Action added to queue successfully');
+            sendResponse({ status: 'queued' });
+        }
+        catch (error) {
+            console.error('Background: Error adding action to queue:', error);
+            sendResponse({ status: 'error', error: error instanceof Error ? error.message : 'Unknown error' });
+        }
     }
+    else {
+        console.log('Background: Message ignored - type:', message.type, 'has data:', !!message.data);
+    }
+    // Return true to indicate we will send a response asynchronously
     return true;
 });
+export {};
 //#endregion

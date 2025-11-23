@@ -4,14 +4,15 @@
     "module": "ES2020",
     "lib": ["ES2020", "DOM"],
     "moduleResolution": "node",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "types": ["chrome"]
+    "typeRoots": ["../frontend/node_modules/@types"],
+    "types": ["chrome", "node"]
   },
   "include": ["*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }
 

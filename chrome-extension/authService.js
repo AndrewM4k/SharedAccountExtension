@@ -1,42 +1,21 @@
+// AuthService - Deprecated
+// Authentication is now handled by background.js via backend API
+// This file is kept for backward compatibility but should not be used
 export class AuthService {
-  constructor() {
-    this.copartCredentials = {
-      login: "331271", // Заменить на реальные данные
-      password: "Kentucky$9598",
-    };
-  }
-
-  async authOnCopart() {
-    try {
-      console.log("https://www.copart.com/login/");
-      // Выполняем авторизацию на Copart
-      const authUrl = "https://www.copart.com/login/";
-
-      const response = await fetch(authUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `username=${this.copartCredentials.login}&password=${this.copartCredentials.password}`,
-      });
-
-      if (response.ok) {
-        // Сохраняем куки для дальнейшего использования
-        const cookies = await chrome.cookies.getAll({ domain: ".copart.com" });
-        await chrome.storage.local.set({ copartCookies: cookies });
-
-        console.log("Успешная авторизация на Copart");
-        return true;
-      } else {
-        console.error("Ошибка авторизации на Copart");
-        return false;
-      }
-    } catch (error) {
-      console.error("Ошибка при авторизации на Copart:", error);
-      return false;
+    constructor() {
+        // Credentials removed - use backend API instead
+        // Authentication is handled by background.js -> authenticateWithBackend()
+        console.warn('AuthService is deprecated. Use background.js authentication instead.');
     }
-  }
+    async authOnCopart() {
+        console.warn('authOnCopart() is deprecated. Use background.js authAndSetCookies action instead.');
+        // Redirect to background script authentication
+        return new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: 'authAndSetCookies' }, (response) => {
+                resolve(response?.success || false);
+            });
+        });
+    }
 }
-
-// Делаем класс доступным глобально для importScripts
-window.AuthService = AuthService;
+// Note: This class is deprecated. Authentication should be done via:
+// chrome.runtime.sendMessage({ action: 'authAndSetCookies' })

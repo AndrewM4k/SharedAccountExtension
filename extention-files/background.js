@@ -1,3 +1,7 @@
+// ⚠️ DEPRECATED: This file is kept for reference only.
+// The active source is background.ts which gets compiled to dist/background.js
+// Edit background.ts instead of this file.
+
 const API_BASE = "https://localhost:5001/api";
 
 //#region Connection
@@ -407,12 +411,10 @@ chrome.runtime.onSuspend.addListener(() => {
 
   if (actionQueue.length > 0) {
     // Используем синхронный XMLHttpRequest для отправки перед закрытием
-    const userToken = getAuthTokenSync(); // Нужно реализовать синхронное получение токена
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", API_BASE + "/actions/add-bulk", false); // Синхронный запрос
     xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.setRequestHeader("Authorization", `Bearer ${userToken}`);
     xhr.send(JSON.stringify({ actions: actionQueue }));
 
     if (xhr.status === 200) {

@@ -9,17 +9,38 @@ async function buildExtensionFiles() {
   const extensionDistDir = path.join(extensionFilesDir, 'dist');
 
   console.log('Building extension TypeScript files...');
+  console.log(`Source: ${extensionFilesDir}`);
+  console.log(`Output: ${extensionDistDir}`);
+
+  // Clean dist directory to ensure fresh compilation
+  if (await fs.pathExists(extensionDistDir)) {
+    await fs.remove(extensionDistDir);
+    console.log('Cleaned dist directory');
+  }
 
   // Create dist directory
   await fs.ensureDir(extensionDistDir);
 
   // Compile TypeScript files
   try {
+    const tsconfigPath = path.join(extensionFilesDir, 'tsconfig.json');
+    console.log(`Compiling with tsconfig: ${tsconfigPath}`);
+    
+    // Use shell on Windows for proper path handling
+    const isWindows = process.platform === 'win32';
     execSync(
-      `tsc --project ${path.join(extensionFilesDir, 'tsconfig.json')} --outDir ${extensionDistDir}`,
-      { stdio: 'inherit', cwd: extensionFilesDir }
+      `tsc --project "${tsconfigPath}" --outDir "${extensionDistDir}"`,
+      { 
+        stdio: 'inherit', 
+        cwd: extensionFilesDir,
+        ...(isWindows ? { shell: 'cmd.exe' } : {})
+      }
     );
     console.log('Extension TypeScript files compiled successfully!');
+    
+    // Verify compiled files exist
+    const compiledFiles = await fs.readdir(extensionDistDir);
+    console.log('Compiled files:', compiledFiles.filter(f => f.endsWith('.js')));
   } catch (error) {
     console.error('Error compiling extension TypeScript:', error);
     process.exit(1);

@@ -24,3 +24,5 @@ export class AuthService {
 // Note: This class is deprecated. Authentication should be done via:
 // chrome.runtime.sendMessage({ action: 'authAndSetCookies' })
 
+
+

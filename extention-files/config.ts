@@ -6,3 +6,5 @@ export const EXTENSION_CONFIG = {
   environment: process.env.VITE_ENVIRONMENT || 'development',
 } as const;
 
+
+

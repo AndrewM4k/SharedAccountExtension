@@ -1,47 +1,13 @@
 // Extension Background Script
 // This handles authentication, cookie management, and action queuing
 
-interface CookieData {
-  name: string;
-  value: string;
-  domain?: string;
-  path?: string;
-  secure?: boolean;
-  httpOnly?: boolean;
-  sameSite?: 'Strict' | 'Lax' | 'None';
-  expirationDate?: number;
-}
-
-interface AuthResponse {
-  success: boolean;
-  cookies?: CookieData[];
-  userAgent?: string;
-  Message?: string;
-  error?: string;
-}
-
-interface ActionData {
-  actionType: string;
-  lotNumber?: string;
-  commentary?: string;
-  timestamp: string;
-  url?: string;
-  lotName?: string;
-  userBidAmount?: string;
-  pageUrl?: string;
-}
-
-interface BulkActionResponse {
-  success: boolean;
-  message?: string;
-  processedCount?: number;
-}
-
-interface RuntimeMessage {
-  action?: string;
-  type?: string;
-  data?: ActionData;
-}
+import type {
+  ActionData,
+  RuntimeMessage,
+  CookieData,
+  AuthResponse,
+  BulkActionResponse
+} from './types';
 
 // Get API base URL from chrome.storage or use default
 // This should be set during extension installation or build
@@ -428,14 +394,26 @@ chrome.runtime.onSuspend.addListener(async () => {
 
 // Слушатель сообщений от content script
 chrome.runtime.onMessage.addListener((message: RuntimeMessage, sender, sendResponse) => {
+  console.log('Background: Message received:', message);
+  
   if (message.type === 'BID_PLACED' && message.data) {
-    console.log('Received action from content script:', message.data);
+    console.log('Background: Received BID_PLACED action from content script:', message.data);
 
-    // Добавляем действие в очередь
-    addToQueue(message.data);
-
-    sendResponse({ status: 'queued' });
+    try {
+      // Добавляем действие в очередь
+      addToQueue(message.data);
+      console.log('Background: Action added to queue successfully');
+      
+      sendResponse({ status: 'queued' });
+    } catch (error) {
+      console.error('Background: Error adding action to queue:', error);
+      sendResponse({ status: 'error', error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  } else {
+    console.log('Background: Message ignored - type:', message.type, 'has data:', !!message.data);
   }
+  
+  // Return true to indicate we will send a response asynchronously
   return true;
 });
 

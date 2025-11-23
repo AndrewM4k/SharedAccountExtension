@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require('fs-extra');
 const path = require('path');
 
@@ -16,8 +17,9 @@ async function copyExtensionFiles() {
   const extensionFilesDir = path.join(projectRoot, 'extention-files'); // Note: keeping typo for now to match existing folder
   const extensionDistDir = path.join(extensionFilesDir, 'dist');
   
-  // Check if dist exists (TypeScript compiled), otherwise use source files
+  // Always use dist if it exists (compiled TypeScript), otherwise fallback to source
   const sourceDir = (await fs.pathExists(extensionDistDir)) ? extensionDistDir : extensionFilesDir;
+  console.log(`Using extension source directory: ${sourceDir}`);
   
   const extensionFiles = [
     'manifest.json',
@@ -36,7 +38,9 @@ async function copyExtensionFiles() {
     if (await fs.pathExists(source)) {
       await fs.ensureDir(path.dirname(dest));
       await fs.copyFile(source, dest);
-      console.log(`Copied: ${file}`);
+      console.log(`Copied: ${file} from ${sourceDir === extensionDistDir ? 'dist (compiled)' : 'source'}`);
+    } else {
+      console.warn(`Warning: ${file} not found in ${sourceDir}`);
     }
   }
 
