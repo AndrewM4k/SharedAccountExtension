@@ -40,6 +40,10 @@
   margin-bottom: 5px;
 }
 
+.filter-group input[type="date"] {
+  min-width: 150px;
+}
+
 .actions-table {
   width: 100% !important;
   background: white;

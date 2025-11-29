@@ -15,6 +15,9 @@ const Dashboard: React.FC = () => {
     pageSize: 20,
     actionType: '',
     search: '',
+    userId: '',
+    startDate: '',
+    endDate: '',
   });
 
   const fetchActions = async () => {
@@ -56,14 +59,22 @@ const Dashboard: React.FC = () => {
       //   }
       // );
 
-      const response = await apiService.getActions();
+      const response = await apiService.getActions({
+        page: filters.page,
+        pageSize: filters.pageSize,
+        actionType: filters.actionType || undefined,
+        search: filters.search || undefined,
+        userId: filters.userId || undefined,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined,
+      });
 
       if (response.status !== 200) throw new Error('Failed to fetch actions');
 
       console.log("response.data ", response.data);
 
-      setActions(response.data);
-      setTotalCount(response.data.totalCount);
+      setActions(response.data.data || []);
+      setTotalCount(response.data.totalCount || 0);
     } catch (error) {
       console.error('Error fetching actions:', error);
     } finally {

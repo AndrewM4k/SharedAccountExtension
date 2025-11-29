@@ -126,12 +126,15 @@ namespace SharedAccountBackend.Controllers
         public async Task<IActionResult> GetActions(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] string actionType = null,
-            [FromQuery] string search = null)
+            [FromQuery] string? actionType = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? userId = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
         {
             try
             {
-                var result = await _actionService.GetActionsAsync(page, pageSize, actionType, search);
+                var result = await _actionService.GetActionsAsync(page, pageSize, actionType, search, userId, startDate, endDate);
 
                 return Ok(new
                 {

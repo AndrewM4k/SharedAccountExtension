@@ -16,11 +16,17 @@ export interface User {
 
 export interface CopartAction {
   id: number;
-  userId: number;
+  userId: string;
+  username?: string;
   actionTime: string;
-  actionType: 'BID' | 'PURCHASE' | 'LOGIN';
+  actionType: 'BID' | 'PURCHASE' | 'LOGIN' | 'VIEW';
   lotNumber: string;
   details: string; // JSON string
+  commentary?: string;
+  userBidAmount?: string;
+  pageUrl?: string;
+  lotName?: string;
+  createdAt?: string;
 }
 
 export interface ApiResponse<T> {

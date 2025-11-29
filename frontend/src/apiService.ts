@@ -71,8 +71,46 @@ export function getUsers() {
   });
 }
 
-export function getActions() {
-  return axios.get(`${API_BASE}/actions`, {
+export interface GetActionsParams {
+  page?: number;
+  pageSize?: number;
+  actionType?: string;
+  search?: string;
+  userId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export function getActions(params?: GetActionsParams) {
+  const queryParams = new URLSearchParams();
+  
+  if (params?.page) {
+    queryParams.append('page', params.page.toString());
+  }
+  if (params?.pageSize) {
+    queryParams.append('pageSize', params.pageSize.toString());
+  }
+  if (params?.actionType) {
+    queryParams.append('actionType', params.actionType);
+  }
+  if (params?.search) {
+    queryParams.append('search', params.search);
+  }
+  if (params?.userId) {
+    queryParams.append('userId', params.userId);
+  }
+  if (params?.startDate) {
+    queryParams.append('startDate', params.startDate);
+  }
+  if (params?.endDate) {
+    queryParams.append('endDate', params.endDate);
+  }
+
+  const queryString = queryParams.toString();
+  const url = queryString ? `${API_BASE}/actions?${queryString}` : `${API_BASE}/actions`;
+
+  return axios.get(url, {
+    withCredentials: true,
     headers: { 'Content-Type': 'application/json' },
   });
 }

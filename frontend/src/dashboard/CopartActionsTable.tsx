@@ -38,6 +38,7 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
         <thead className="thead-light">
           <tr>
             <th>Пользовательский ID</th>
+            <th>Имя</th>
             <th>Время</th>
             <th>Событие</th>
             <th>Номер лота</th>
@@ -47,16 +48,17 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
         <tbody>
           {actions && actions.length === 0 ? (
             <tr>
-              <td colSpan={5} className="no-data">
+              <td colSpan={6} className="no-data">
                 Нет событий
               </td>
             </tr>
           ) : ( actions &&
             actions.map((action) => {
-              const details = parseDetails(action.details);
+              const details = action.details ? parseDetails(action.details) : (action.commentary ? { commentary: action.commentary } : {});
               return (
                 <tr key={action.id}>
                   <td>{action.userId}</td>
+                  <td>{action.username || 'N/A'}</td>
                   <td>{new Date(action.actionTime).toLocaleString()}</td>
                   <td>
                     <span

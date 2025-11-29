@@ -23,10 +23,10 @@ namespace SharedAccountBackend.Business.Services
             _logger = logger;
         }
 
-        public async Task<PaginatedActionsResult> GetActionsAsync(int page, int pageSize, string? actionType, string? search)
+        public async Task<PaginatedActionsResult> GetActionsAsync(int page, int pageSize, string? actionType, string? search, string? userId, DateTime? startDate, DateTime? endDate)
         {
-            var actions = await _copartActionRepository.GetActionsAsync(actionType, search, page, pageSize);
-            var totalCount = await _copartActionRepository.GetActionsCountAsync(actionType, search);
+            var actions = await _copartActionRepository.GetActionsAsync(actionType, search, userId, startDate, endDate, page, pageSize);
+            var totalCount = await _copartActionRepository.GetActionsCountAsync(actionType, search, userId, startDate, endDate);
 
             return new PaginatedActionsResult
             {

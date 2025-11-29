@@ -3,9 +3,8 @@ import React from 'react';
 const actionTypes = [
   { value: '', label: 'All Actions' },
   { value: 'BID', label: 'Bids' },
-  { value: 'PURCHASE', label: 'Purchases' },
+  { value: 'VIEW', label: 'View' },
   { value: 'LOGIN', label: 'Logins' },
-  { value: 'LOGOUT', label: 'Logouts' },
 ];
 
 interface ActionFiltersProps {
@@ -13,11 +12,17 @@ interface ActionFiltersProps {
     actionType: string;
     search: string;
     pageSize: number;
+    userId: string;
+    startDate: string;
+    endDate: string;
   };
   onFilterChange: (newFilters: {
     actionType?: string;
     search?: string;
     pageSize?: number;
+    userId?: string;
+    startDate?: string;
+    endDate?: string;
   }) => void;
 }
 
@@ -29,16 +34,28 @@ const ActionFilters: React.FC<ActionFiltersProps> = ({
     <div className="action-filters w50">
       <div className="filter-row w100">  
         <div className="filter-group w90">
+          <label>Поиск (по имени и действию):</label>
           <input
             className="form-control"
             type="text"
-            placeholder="Поиск..."
+            placeholder="Поиск по имени пользователя или типу действия..."
             value={filters.search}
             onChange={(e) => onFilterChange({ search: e.target.value })}
           />
         </div>
       </div>
       <div className="filter-row">  
+        <div className="filter-group">
+          <label>ID пользователя:</label>
+          <input
+            className="form-control"
+            type="text"
+            placeholder="ID пользователя"
+            value={filters.userId}
+            onChange={(e) => onFilterChange({ userId: e.target.value })}
+          />
+        </div>
+
         <div className="filter-group">
           <label>Тип события:</label>
           <select
@@ -54,7 +71,6 @@ const ActionFilters: React.FC<ActionFiltersProps> = ({
           </select>
         </div>
 
-
         <div className="filter-group">
           <label>Штук на странице:</label>
           <select
@@ -67,6 +83,27 @@ const ActionFilters: React.FC<ActionFiltersProps> = ({
             <option value="50">50</option>
             <option value="100">100</option>
           </select>
+        </div>
+      </div>
+      <div className="filter-row">
+        <div className="filter-group">
+          <label>Дата начала:</label>
+          <input
+            className="form-control"
+            type="date"
+            value={filters.startDate}
+            onChange={(e) => onFilterChange({ startDate: e.target.value })}
+          />
+        </div>
+
+        <div className="filter-group">
+          <label>Дата окончания:</label>
+          <input
+            className="form-control"
+            type="date"
+            value={filters.endDate}
+            onChange={(e) => onFilterChange({ endDate: e.target.value })}
+          />
         </div>
       </div>
     </div>
