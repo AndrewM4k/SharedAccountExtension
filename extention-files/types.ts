@@ -11,6 +11,7 @@ export interface ActionData {
   pageUrl?: string;
   bidAmount?: number;
   userId?: string;
+  details?: string;
 }
 
 export interface RuntimeMessage {

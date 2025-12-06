@@ -18,6 +18,7 @@ interface ActionData {
   pageUrl?: string;
   bidAmount?: number;
   userId?: string;
+  details?: string;
 }
 
 interface RuntimeMessage {
@@ -37,6 +38,22 @@ console.log('Content script loaded and ready on Copart.');
 function sendActionToBackground(actionData: ActionData, retries = 3): void {
   console.log('Content script: Sending action to background:', actionData);
   
+  // Check if chrome.runtime is available
+  if (typeof chrome === 'undefined' || !chrome.runtime) {
+    console.warn('Content script: chrome.runtime not available, saving to storage instead');
+    console.warn('Content script: This may happen if button is in an iframe or modal');
+    console.warn('Content script: Window context:', {
+      isTop: window.self === window.top,
+      location: window.location.href,
+      hasChrome: typeof chrome !== 'undefined',
+      hasRuntime: typeof chrome !== 'undefined' && !!chrome.runtime
+    });
+    saveActionToChromeStorage(actionData);
+    return;
+  }
+  
+  console.log('Content script: chrome.runtime is available, attempting to send message');
+  
   try {
     chrome.runtime.sendMessage(
       {
@@ -46,7 +63,20 @@ function sendActionToBackground(actionData: ActionData, retries = 3): void {
       (response: RuntimeResponse) => {
         if (chrome.runtime.lastError) {
           // Ошибка отправки сообщения
+          const errorMessage = chrome.runtime.lastError.message || '';
           console.error('Content script: Error sending message to background:', chrome.runtime.lastError);
+          console.error('Content script: Error details:', errorMessage);
+
+          // Check if error is due to extension context invalidation
+          if (errorMessage.includes('Extension context invalidated') || 
+              errorMessage.includes('context invalidated') ||
+              errorMessage.includes('message port closed') ||
+              errorMessage.includes('Receiving end does not exist')) {
+            console.warn('Content script: Extension context invalidated, saving to storage');
+            // Don't retry if context is invalidated - just save to storage
+            saveActionToChromeStorage(actionData);
+            return;
+          }
 
           if (retries > 0) {
             // Повторная попытка через 1 секунду
@@ -66,9 +96,25 @@ function sendActionToBackground(actionData: ActionData, retries = 3): void {
     );
   } catch (error) {
     console.error('Content script: Exception sending message:', error);
+    console.error('Content script: Exception type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('Content script: Exception message:', error instanceof Error ? error.message : String(error));
+    
+    // Check if error is due to extension context invalidation
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('Extension context invalidated') || 
+        errorMessage.includes('context invalidated') ||
+        errorMessage.includes('message port closed')) {
+      console.warn('Content script: Extension context invalidated, saving to storage');
+      // Don't retry if context is invalidated - just save to storage
+      saveActionToChromeStorage(actionData);
+      return;
+    }
+    
     if (retries > 0) {
+      console.log(`Content script: Retrying after exception... (${retries} retries left)`);
       setTimeout(() => sendActionToBackground(actionData, retries - 1), 1000);
     } else {
+      console.log('Content script: All retries exhausted after exception, saving to storage');
       saveActionToChromeStorage(actionData);
     }
   }
@@ -142,12 +188,25 @@ function extractLotNumber(): string {
 
 // Helper function to extract bid amount from page
 function extractBidAmount(): string {
+  // Priority 1: Check for max bid input (your-max-bid)
+  const maxBidInput = document.querySelector('#your-max-bid') as HTMLInputElement;
+  if (maxBidInput && maxBidInput.value) {
+    return maxBidInput.value.trim();
+  }
+  
+  // Priority 2: Check for maxBid input by name
+  const maxBidByName = document.querySelector('input[name="maxBid"]') as HTMLInputElement;
+  if (maxBidByName && maxBidByName.value) {
+    return maxBidByName.value.trim();
+  }
+  
+  // Priority 3: Check for start-bid input (backward compatibility)
   const bidInput = document.querySelector('#start-bid') as HTMLInputElement;
   if (bidInput && bidInput.value) {
     return bidInput.value.trim();
   }
   
-  // Try alternative selectors
+  // Priority 4: Try alternative selectors (backward compatibility)
   const altBidInput = document.querySelector('input[name="startBid"]') as HTMLInputElement;
   if (altBidInput && altBidInput.value) {
     return altBidInput.value.trim();
@@ -188,6 +247,10 @@ function getActionDescription(button: HTMLElement): string {
     return 'Buy it now button clicked';
   }
   
+  if (button.getAttribute('ng-click') === 'openIncreaseBidModal()') {
+    return 'Bid now button clicked (increase bid modal)';
+  }
+  
   if (button.classList.contains('btn-yellow-rd') || button.getAttribute('ng-click') === 'openPrelimBidModal()') {
     return 'Bid now button clicked (prelim modal)';
   }
@@ -201,13 +264,19 @@ function getActionDescription(button: HTMLElement): string {
 
 // Helper function to extract lot name from page
 function extractLotName(): string {
-  // Try to get from page title or heading
-  const titleElement = document.querySelector('h1, .lot-title, [data-uname="lotdetailTitle"]');
+  // Priority 1: Try to get from h1.title (first h1 tag with class "title")
+  const titleElement = document.querySelector('h1.title');
   if (titleElement) {
     return titleElement.textContent?.trim() || '';
   }
   
-  // Try to extract from URL
+  // Priority 2: Try other h1 tags or lot-title class
+  const altTitleElement = document.querySelector('h1, .lot-title, [data-uname="lotdetailTitle"]');
+  if (altTitleElement) {
+    return altTitleElement.textContent?.trim() || '';
+  }
+  
+  // Priority 3: Try to extract from URL
   const urlMatch = window.location.pathname.match(/\/lot\/\d+\/([^/]+)/);
   if (urlMatch) {
     return decodeURIComponent(urlMatch[1].replace(/-/g, ' '));
@@ -216,8 +285,68 @@ function extractLotName(): string {
   return '';
 }
 
+// Helper function to extract details from page elements
+// For btn-yellow-rd: from closest h1.title in div.title-and-highlights
+// For search result links: from h1.title OR span.search_result_lot_detail
+function extractDetails(element: HTMLElement): string {
+  // For btn-yellow-rd buttons: find closest div with class containing "title-and-highlights"
+  if (element.closest('button.btn.btn-yellow-rd') || 
+      element.classList.contains('btn-yellow-rd')) {
+    const titleContainer = element.closest('div[class*="title-and-highlights"]');
+    if (titleContainer) {
+      const h1Title = titleContainer.querySelector('h1.title');
+      if (h1Title) {
+        return h1Title.textContent?.trim() || '';
+      }
+    }
+    // Fallback: try to find h1.title anywhere nearby
+    const h1Title = element.closest('div')?.querySelector('h1.title');
+    if (h1Title) {
+      return h1Title.textContent?.trim() || '';
+    }
+  }
+  
+  // For search result links (a.cprt-btn-lblue-content or a#buyItNowBtn)
+  if (element.closest('a.cprt-btn-lblue-content') || 
+      element.closest('a#buyItNowBtn') ||
+      element.id === 'buyItNowBtn') {
+    // Try to find h1.title in div.title-and-highlights first
+    const titleContainer = element.closest('div[class*="title-and-highlights"]');
+    if (titleContainer) {
+      const h1Title = titleContainer.querySelector('h1.title');
+      if (h1Title) {
+        return h1Title.textContent?.trim() || '';
+      }
+    }
+    
+    // Fallback: try span.search_result_lot_detail
+    const lotDetailSpan = element.closest('div')?.querySelector('span.search_result_lot_detail');
+    if (lotDetailSpan) {
+      return lotDetailSpan.textContent?.trim() || '';
+    }
+    
+    // Try to find h1.title anywhere nearby
+    const h1Title = element.closest('div')?.querySelector('h1.title');
+    if (h1Title) {
+      return h1Title.textContent?.trim() || '';
+    }
+  }
+  
+  return '';
+}
+
 // Test: Log when content script is ready and event listener is attached
 console.log('Content script: Event listener attached, ready to track clicks');
+
+// Click debouncing - prevent duplicate actions from rapid clicks
+let lastActionTime = 0;
+let lastActionKey = '';
+const CLICK_DEBOUNCE_MS = 100; // Ignore duplicate actions within 100ms
+
+function getActionKey(actionData: ActionData): string {
+  return `${actionData.actionType}_${actionData.lotNumber}_${actionData.timestamp}`;
+}
+
 //#region Clicks
 // Отслеживание действий на странице
 document.addEventListener('click', function (event: MouseEvent) {
@@ -245,7 +374,22 @@ document.addEventListener('click', function (event: MouseEvent) {
     };
     
     console.log('Pay button clicked, data:', actionData);
+    
+    // Debounce check
+    const actionKey = getActionKey(actionData);
+    const now = Date.now();
+    if (now - lastActionTime < CLICK_DEBOUNCE_MS && lastActionKey === actionKey) {
+      console.log('Content script: Duplicate action ignored (debounce)');
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return;
+    }
+    lastActionTime = now;
+    lastActionKey = actionKey;
+    
     sendActionToBackground(actionData);
+    event.stopPropagation();
+    event.stopImmediatePropagation();
     return;
   }
 
@@ -255,6 +399,7 @@ document.addEventListener('click', function (event: MouseEvent) {
     const link = target.closest('a') || target as HTMLAnchorElement;
     const lotNumber = extractLotNumber();
     const bidAmount = extractBidAmount();
+    const details = extractDetails(link);
     
     // Try to extract lot number from href if available
     let extractedLotNumber = lotNumber;
@@ -273,10 +418,26 @@ document.addEventListener('click', function (event: MouseEvent) {
       pageUrl: link.href || window.location.href,
       lotName: extractLotName(),
       commentary: getActionDescription(link),
+      details: details,
     };
     
     console.log('Bid now link clicked, data:', actionData);
+    
+    // Debounce check
+    const actionKey = getActionKey(actionData);
+    const now = Date.now();
+    if (now - lastActionTime < CLICK_DEBOUNCE_MS && lastActionKey === actionKey) {
+      console.log('Content script: Duplicate action ignored (debounce)');
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return;
+    }
+    lastActionTime = now;
+    lastActionKey = actionKey;
+    
     sendActionToBackground(actionData);
+    event.stopPropagation();
+    event.stopImmediatePropagation();
     return;
   }
 
@@ -287,6 +448,7 @@ document.addEventListener('click', function (event: MouseEvent) {
     const link = target.closest('a') || target as HTMLAnchorElement;
     const lotNumber = extractLotNumber();
     const bidAmount = extractBidAmount();
+    const details = extractDetails(link);
     
     // Try to extract lot number from href if available
     let extractedLotNumber = lotNumber;
@@ -305,21 +467,40 @@ document.addEventListener('click', function (event: MouseEvent) {
       pageUrl: link.href || window.location.href,
       lotName: extractLotName(),
       commentary: 'Buy it now link clicked', // Detailed description in commentary
+      details: details,
     };
     
     console.log('Buy it now link clicked, data:', actionData);
+    
+    // Debounce check
+    const actionKey = getActionKey(actionData);
+    const now = Date.now();
+    if (now - lastActionTime < CLICK_DEBOUNCE_MS && lastActionKey === actionKey) {
+      console.log('Content script: Duplicate action ignored (debounce)');
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return;
+    }
+    lastActionTime = now;
+    lastActionKey = actionKey;
+    
     sendActionToBackground(actionData);
+    event.stopPropagation();
+    event.stopImmediatePropagation();
     return;
   }
 
   // 4. Bid now button: <button class="btn btn-yellow-rd" ng-click="openPrelimBidModal()">Bid now</button>
+  //    Also handles: <button class="btn btn-yellow-rd" ng-click="openIncreaseBidModal()">Bid now</button>
   if (target.closest('button.btn.btn-yellow-rd') ||
       (target.tagName === 'BUTTON' && 
        (target.classList.contains('btn-yellow-rd') || 
-        target.getAttribute('ng-click') === 'openPrelimBidModal()'))) {
+        target.getAttribute('ng-click') === 'openPrelimBidModal()' ||
+        target.getAttribute('ng-click') === 'openIncreaseBidModal()'))) {
     const button = target.closest('button') || target;
     const lotNumber = extractLotNumber();
     const bidAmount = extractBidAmount();
+    const details = extractDetails(button);
     
     actionData = {
       actionType: 'Bid',
@@ -329,37 +510,53 @@ document.addEventListener('click', function (event: MouseEvent) {
       pageUrl: window.location.href,
       lotName: extractLotName(),
       commentary: getActionDescription(button),
+      details: details,
     };
     
     console.log('Bid now button clicked, data:', actionData);
+    
+    // Debounce check
+    const actionKey = getActionKey(actionData);
+    const now = Date.now();
+    if (now - lastActionTime < CLICK_DEBOUNCE_MS && lastActionKey === actionKey) {
+      console.log('Content script: Duplicate action ignored (debounce)');
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return;
+    }
+    lastActionTime = now;
+    lastActionKey = actionKey;
+    
     sendActionToBackground(actionData);
+    event.stopPropagation();
+    event.stopImmediatePropagation();
     return;
   }
 
-  // 5. Test button handler - fires on ANY button click for testing
-  // This helps verify the content script is working
-  if (target.tagName === 'BUTTON' || target.closest('button')) {
-    const button = target.closest('button') || target;
-    console.log('Content script: Button clicked -', button.textContent?.trim() || 'no text', button.className);
+  // // 5. Test button handler - fires on ANY button click for testing
+  // // This helps verify the content script is working
+  // if (target.tagName === 'BUTTON' || target.closest('button')) {
+  //   const button = target.closest('button') || target;
+  //   console.log('Content script: Button clicked -', button.textContent?.trim() || 'no text', button.className);
     
-    // If it's a test button or any button, create test action
-    if (button.textContent?.toLowerCase().includes('test') || 
-        button.id?.toLowerCase().includes('test') ||
-        button.className?.toLowerCase().includes('test')) {
-      actionData = {
-        actionType: 'Bid',
-        lotNumber: extractLotNumber(),
-        userBidAmount: extractBidAmount(),
-        timestamp: new Date().toISOString(),
-        pageUrl: window.location.href,
-        lotName: extractLotName() || 'Test Action',
-        commentary: `Test button clicked: ${button.textContent?.trim() || 'unknown'}`,
-      };
-      console.log('Content script: Test button action data:', actionData);
-      sendActionToBackground(actionData);
-      return;
-    }
-  }
+  //   // If it's a test button or any button, create test action
+  //   if (button.textContent?.toLowerCase().includes('test') || 
+  //       button.id?.toLowerCase().includes('test') ||
+  //       button.className?.toLowerCase().includes('test')) {
+  //     actionData = {
+  //       actionType: 'Bid',
+  //       lotNumber: extractLotNumber(),
+  //       userBidAmount: extractBidAmount(),
+  //       timestamp: new Date().toISOString(),
+  //       pageUrl: window.location.href,
+  //       lotName: extractLotName() || 'Test Action',
+  //       commentary: `Test button clicked: ${button.textContent?.trim() || 'unknown'}`,
+  //     };
+  //     console.log('Content script: Test button action data:', actionData);
+  //     sendActionToBackground(actionData);
+  //     return;
+  //   }
+  // }
 
   // 6. Legacy test selector - keep for backward compatibility
   if (target.matches('a[aria-controls="serverSideDataTable_mylots"][data-dt-idx="0"]')) {
@@ -377,42 +574,57 @@ document.addEventListener('click', function (event: MouseEvent) {
     };
 
     console.log('Table link clicked, data:', actionData);
-    sendActionToBackground(actionData);
-    return;
-  }
-
-  // 7. Fallback: generic bid button (if .bid-button class exists)
-  if (target.closest('.bid-button')) {
-    const lotNumber = extractLotNumber();
-    const bidAmount = extractBidAmount();
-
-    actionData = {
-      actionType: 'Bid',
-      lotNumber: lotNumber,
-      userBidAmount: bidAmount,
-      timestamp: new Date().toISOString(),
-      pageUrl: window.location.href,
-      lotName: extractLotName(),
-    };
+    
+    // Debounce check
+    const actionKey = getActionKey(actionData);
+    const now = Date.now();
+    if (now - lastActionTime < CLICK_DEBOUNCE_MS && lastActionKey === actionKey) {
+      console.log('Content script: Duplicate action ignored (debounce)');
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return;
+    }
+    lastActionTime = now;
+    lastActionKey = actionKey;
     
     sendActionToBackground(actionData);
+    event.stopPropagation();
+    event.stopImmediatePropagation();
     return;
   }
+
+  // // 7. Fallback: generic bid button (if .bid-button class exists)
+  // if (target.closest('.bid-button')) {
+  //   const lotNumber = extractLotNumber();
+  //   const bidAmount = extractBidAmount();
+
+  //   actionData = {
+  //     actionType: 'Bid',
+  //     lotNumber: lotNumber,
+  //     userBidAmount: bidAmount,
+  //     timestamp: new Date().toISOString(),
+  //     pageUrl: window.location.href,
+  //     lotName: extractLotName(),
+  //   };
+    
+  //   sendActionToBackground(actionData);
+  //   return;
+  // }
 });
 
 // Отслеживание изменений URL (SPA navigation)
-let lastUrl = location.href;
-new MutationObserver(() => {
-  const url = location.href;
-  if (url !== lastUrl) {
-    lastUrl = url;
-    const actionData: ActionData = {
-      actionType: 'Bid',
-      timestamp: new Date().toISOString(),
-      pageUrl: url,
-    };
-    sendActionToBackground(actionData);
-  }
-}).observe(document, { subtree: true, childList: true });
+// let lastUrl = location.href;
+// new MutationObserver(() => {
+//   const url = location.href;
+//   if (url !== lastUrl) {
+//     lastUrl = url;
+//     const actionData: ActionData = {
+//       actionType: 'Bid',
+//       timestamp: new Date().toISOString(),
+//       pageUrl: url,
+//     };
+//     sendActionToBackground(actionData);
+//   }
+// }).observe(document, { subtree: true, childList: true });
 //#endregion 
 

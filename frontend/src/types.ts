@@ -21,12 +21,13 @@ export interface CopartAction {
   actionTime: string;
   actionType: 'BID' | 'PURCHASE' | 'LOGIN' | 'VIEW';
   lotNumber: string;
-  details: string; // JSON string
-  commentary?: string;
+  details: string; // JSON string (parsed from commentary, computed on frontend)
+  commentary?: string; // JSON string from backend
   userBidAmount?: string;
   pageUrl?: string;
   lotName?: string;
   createdAt?: string;
+  details?: string; // Extracted details from page elements (from backend Details field)
 }
 
 export interface ApiResponse<T> {

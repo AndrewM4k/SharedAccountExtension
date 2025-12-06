@@ -12,5 +12,6 @@
         public string PageUrl { get; set; }
         public string LotNumber { get; set; }
         public string LotName { get; set; }
+        public string? Details { get; set; } // Extracted details from page elements
     }
 }

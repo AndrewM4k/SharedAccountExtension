@@ -10,5 +10,6 @@
         public string LotName { get; set; }
         public string UserBidAmount { get; set; }
         public string PageUrl { get; set; }
+        public string? Details { get; set; } // Extracted details from page elements
     }
 }

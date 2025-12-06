@@ -23,10 +23,10 @@ namespace SharedAccountBackend.Business.Services
             _logger = logger;
         }
 
-        public async Task<PaginatedActionsResult> GetActionsAsync(int page, int pageSize, string? actionType, string? search, string? userId, DateTime? startDate, DateTime? endDate)
+        public async Task<PaginatedActionsResult> GetActionsAsync(int page, int pageSize, string? actionType, string? search, string? userId, DateTime? startDate, DateTime? endDate, string? lotNumber)
         {
-            var actions = await _copartActionRepository.GetActionsAsync(actionType, search, userId, startDate, endDate, page, pageSize);
-            var totalCount = await _copartActionRepository.GetActionsCountAsync(actionType, search, userId, startDate, endDate);
+            var actions = await _copartActionRepository.GetActionsAsync(actionType, search, userId, startDate, endDate, page, pageSize, lotNumber);
+            var totalCount = await _copartActionRepository.GetActionsCountAsync(actionType, search, userId, startDate, endDate, lotNumber);
 
             return new PaginatedActionsResult
             {
@@ -69,14 +69,25 @@ namespace SharedAccountBackend.Business.Services
                 return 0;
             }
 
-            var desiredTimestamps = actions
-                .Select(a => ParseToUtc(a.Timestamp))
+            // Create action keys for comprehensive duplicate detection: userId + timestamp + lotNumber + actionType
+            var actionKeys = actions
+                .Select(a => (
+                    timestamp: ParseToUtc(a.Timestamp),
+                    lotNumber: a.LotNumber ?? string.Empty,
+                    actionType: a.ActionType ?? string.Empty
+                ))
                 .ToList();
 
-            var existingTimestamps = await _copartActionRepository.GetExistingActionTimestampsAsync(desiredTimestamps);
+            // Check for duplicates using comprehensive key (userId + timestamp + lotNumber + actionType)
+            var existingKeys = await _copartActionRepository.GetExistingActionKeysAsync(userId, actionKeys);
 
             var newActions = actions
-                .Where(a => !existingTimestamps.Contains(ParseToUtc(a.Timestamp)))
+                .Where(a =>
+                {
+                    var timestamp = ParseToUtc(a.Timestamp);
+                    var key = $"{timestamp:O}_{a.LotNumber ?? string.Empty}_{a.ActionType ?? string.Empty}";
+                    return !existingKeys.Contains(key);
+                })
                 .ToList();
 
             var shouldSaveCopartActions = false;
@@ -148,6 +159,7 @@ namespace SharedAccountBackend.Business.Services
                         Commentary = actionDto.Commentary,
                         UserBidAmount = actionDto.UserBidAmount,
                         PageUrl = actionDto.PageUrl,
+                        Details = actionDto.Details,
                         ActionTime = timestamp,
                         CreatedAt = DateTime.UtcNow
                     });
@@ -163,6 +175,7 @@ namespace SharedAccountBackend.Business.Services
                         Commentary = actionDto.Commentary,
                         UserBidAmount = actionDto.UserBidAmount,
                         PageUrl = actionDto.PageUrl,
+                        Details = actionDto.Details,
                         ActionTime = timestamp,
                         CreatedAt = DateTime.UtcNow
                     });

@@ -29,7 +29,8 @@ namespace SharedAccountBackend.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? userId = null,
             [FromQuery] DateTime? startDate = null,
-            [FromQuery] DateTime? endDate = null)
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] string? lotNumber = null)
         {
             try
             {
@@ -53,7 +54,7 @@ namespace SharedAccountBackend.Controllers
                     normalizedEndDate = DateTime.SpecifyKind(dateOnly, DateTimeKind.Utc);
                 }
 
-                var result = await _actionService.GetActionsAsync(page, pageSize, actionType, search, userId, normalizedStartDate, normalizedEndDate);
+                var result = await _actionService.GetActionsAsync(page, pageSize, actionType, search, userId, normalizedStartDate, normalizedEndDate, lotNumber);
 
                 return Ok(new
                 {

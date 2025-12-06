@@ -207,20 +207,118 @@ async function authenticateWithBackend() {
     }
 }
 //#endregion
+//#region Authentication
+// Function to ensure authentication before sending actions
+async function ensureAuthenticated() {
+    try {
+        const apiBase = await getApiBase();
+        // Check if token is valid
+        const checkResponse = await fetch(apiBase + '/auth/check', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        if (checkResponse.ok) {
+            return true;
+        }
+        // Token is invalid, try to refresh
+        console.log('Token expired, attempting to refresh...');
+        const refreshResponse = await fetch(apiBase + '/auth/refresh-token', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        if (refreshResponse.ok) {
+            // Verify refresh worked
+            const recheckResponse = await fetch(apiBase + '/auth/check', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (recheckResponse.ok) {
+                console.log('Token refreshed successfully');
+                return true;
+            }
+        }
+        console.error('Failed to refresh token');
+        return false;
+    }
+    catch (error) {
+        console.error('Error checking/refreshing token:', error);
+        return false;
+    }
+}
+//#endregion
 //#region Events
 let actionQueue = [];
 let isSending = false;
+let isProcessing = false;
+let batchIntervalId = null;
 const BATCH_INTERVAL = 10000;
 const MAX_BATCH_SIZE = 50;
+// Helper function to merge pendingActions from content script into queue
+async function mergePendingActionsFromStorage() {
+    try {
+        const result = await chrome.storage.local.get(['pendingActions']);
+        const pendingActions = result.pendingActions || [];
+        if (pendingActions.length > 0) {
+            console.log(`Background: Found ${pendingActions.length} pending actions from content script, merging into queue`);
+            // Add pending actions to queue
+            actionQueue.push(...pendingActions);
+            saveQueue();
+            // Clear pendingActions from storage
+            await chrome.storage.local.remove('pendingActions');
+            console.log('Background: Pending actions merged and cleared from storage');
+        }
+    }
+    catch (error) {
+        console.error('Background: Error merging pending actions:', error);
+    }
+}
 // Восстановление очереди при запуске
-chrome.storage.local.get(['actionQueue'], (result) => {
+chrome.storage.local.get(['actionQueue'], async (result) => {
     if (result.actionQueue && Array.isArray(result.actionQueue)) {
         actionQueue = result.actionQueue;
         console.log('Queue restored from storage. Length:', actionQueue.length);
-        // Немедленно пытаемся отправить восстановленные данные
-        if (actionQueue.length > 0) {
-            processQueue();
-        }
+    }
+    // Merge any pendingActions saved by content script (e.g., when extension context was invalidated)
+    await mergePendingActionsFromStorage();
+    // Немедленно пытаемся отправить восстановленные данные
+    if (actionQueue.length > 0) {
+        // Start the batch sending process
+        startSendingBatch();
+    }
+});
+// Process queue when extension starts up
+chrome.runtime.onStartup.addListener(async () => {
+    console.log('Extension started up, checking for pending actions...');
+    const result = await chrome.storage.local.get(['actionQueue']);
+    if (result.actionQueue && Array.isArray(result.actionQueue)) {
+        actionQueue = result.actionQueue;
+    }
+    // Merge any pendingActions saved by content script
+    await mergePendingActionsFromStorage();
+    if (actionQueue.length > 0) {
+        startSendingBatch();
+    }
+});
+// Process queue when extension is installed or updated
+chrome.runtime.onInstalled.addListener(async () => {
+    console.log('Extension installed/updated, checking for pending actions...');
+    const result = await chrome.storage.local.get(['actionQueue']);
+    if (result.actionQueue && Array.isArray(result.actionQueue)) {
+        actionQueue = result.actionQueue;
+    }
+    // Merge any pendingActions saved by content script
+    await mergePendingActionsFromStorage();
+    if (actionQueue.length > 0) {
+        startSendingBatch();
     }
 });
 // Функция для сохранения очереди в хранилище
@@ -245,19 +343,44 @@ function startSendingBatch() {
     if (isSending)
         return;
     isSending = true;
-    setInterval(() => {
+    // Clear any existing interval
+    if (batchIntervalId !== null) {
+        clearInterval(batchIntervalId);
+    }
+    batchIntervalId = setInterval(() => {
         if (actionQueue.length === 0) {
             console.log('Queue is empty, skipping send.');
+            // Stop the interval if queue is empty
+            if (batchIntervalId !== null) {
+                clearInterval(batchIntervalId);
+                batchIntervalId = null;
+                isSending = false;
+            }
             return;
         }
-        processQueue();
+        // Only process if not already processing
+        if (!isProcessing) {
+            processQueue();
+        }
     }, BATCH_INTERVAL);
 }
 // Функция для обработки очереди
 async function processQueue() {
-    // Копируем часть очереди для отправки
+    // Prevent concurrent processing - set flag immediately to prevent race conditions
+    if (isProcessing) {
+        console.log('Queue processing already in progress, skipping...');
+        return;
+    }
+    if (actionQueue.length === 0) {
+        return;
+    }
+    // Set processing flag IMMEDIATELY to prevent concurrent calls
+    isProcessing = true;
+    // Remove actions from queue IMMEDIATELY to prevent duplicate sends
     const actionsToSend = actionQueue.slice(0, MAX_BATCH_SIZE);
-    const remainingActions = actionQueue.slice(MAX_BATCH_SIZE);
+    actionQueue = actionQueue.slice(MAX_BATCH_SIZE);
+    // Save updated queue immediately
+    saveQueue();
     console.log(`Preparing to send batch of ${actionsToSend.length} actions.`);
     // Нормализуем данные перед отправкой
     const normalizedActions = actionsToSend.map((item) => ({
@@ -269,35 +392,75 @@ async function processQueue() {
         lotName: item.lotName || '',
         userBidAmount: item.userBidAmount || '',
         pageUrl: item.pageUrl || '',
+        details: item.details || '',
     }));
     try {
+        // Ensure authentication before sending
+        const isAuthenticated = await ensureAuthenticated();
+        if (!isAuthenticated) {
+            throw new Error('Authentication failed');
+        }
         const apiBase = await getApiBase();
         const response = await fetch(apiBase + '/actions/add-bulk', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ actions: normalizedActions }),
         });
-        if (!response.ok) {
+        if (response.status === 401) {
+            // Token expired, try to refresh and retry once
+            console.log('Received 401, attempting token refresh and retry...');
+            const refreshed = await ensureAuthenticated();
+            if (refreshed) {
+                // Retry the request
+                const retryResponse = await fetch(apiBase + '/actions/add-bulk', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ actions: normalizedActions }),
+                });
+                if (!retryResponse.ok) {
+                    throw new Error(`HTTP error! status: ${retryResponse.status}`);
+                }
+                const result = await retryResponse.json();
+                console.log('Batch send successful after token refresh:', result);
+            }
+            else {
+                throw new Error('Authentication failed after refresh attempt');
+            }
+        }
+        else if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const result = await response.json();
-        console.log('Batch send successful:', result);
-        // Удаляем отправленные действия из очереди
-        actionQueue = remainingActions;
-        // Сохраняем обновленную очередь
-        saveQueue();
-        // Если в очереди еще есть действия, планируем следующую отправку
+        else {
+            const result = await response.json();
+            console.log('Batch send successful:', result);
+        }
+        // If queue still has actions, schedule next send
         if (actionQueue.length > 0) {
-            setTimeout(processQueue, 1000);
+            setTimeout(() => {
+                isProcessing = false;
+                processQueue();
+            }, 1000);
+        }
+        else {
+            isProcessing = false;
         }
     }
     catch (error) {
         console.error('Error sending batch:', error);
-        // В случае ошибки оставляем действия в очереди для повторной попытки
-        // Увеличиваем интервал перед следующей попыткой (экспоненциальная задержка)
-        setTimeout(processQueue, 30000); // Повторная попытка через 30 секунд
+        // Put actions back in queue for retry (at the beginning to preserve order)
+        actionQueue = [...actionsToSend, ...actionQueue];
+        saveQueue();
+        // Schedule retry with exponential backoff
+        setTimeout(() => {
+            isProcessing = false;
+            processQueue();
+        }, 30000); // Retry after 30 seconds
     }
 }
 // Попытка отправить все данные при закрытии/приостановке расширения
@@ -329,9 +492,22 @@ chrome.runtime.onSuspend.addListener(async () => {
         chrome.storage.local.remove('actionQueue');
     }
 });
+// Helper function to check and process queue when extension wakes up
+async function checkAndProcessQueueOnWake() {
+    // First, merge any pendingActions from content script
+    await mergePendingActionsFromStorage();
+    // Check if there are pending actions and process them
+    if (actionQueue.length > 0 && !isProcessing) {
+        console.log('Background: Extension woke up, processing pending queue...');
+        startSendingBatch();
+    }
+}
 // Слушатель сообщений от content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Background: Message received:', message);
+    // When any message is received, it means the extension is active - check queue
+    // Use void to fire and forget (don't wait for async operation)
+    void checkAndProcessQueueOnWake();
     if (message.type === 'BID_PLACED' && message.data) {
         console.log('Background: Received BID_PLACED action from content script:', message.data);
         try {
@@ -344,6 +520,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             console.error('Background: Error adding action to queue:', error);
             sendResponse({ status: 'error', error: error instanceof Error ? error.message : 'Unknown error' });
         }
+    }
+    else if (message.action === 'processQueue' || message.type === 'PROCESS_QUEUE') {
+        // Handle request from popup to process queue immediately
+        console.log('Background: Processing queue on request from popup');
+        if (actionQueue.length > 0) {
+            startSendingBatch();
+            sendResponse({ status: 'processing', queueLength: actionQueue.length });
+        }
+        else {
+            sendResponse({ status: 'empty' });
+        }
+        return true; // Async response
     }
     else {
         console.log('Background: Message ignored - type:', message.type, 'has data:', !!message.data);

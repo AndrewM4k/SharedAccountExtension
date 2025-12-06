@@ -43,18 +43,22 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
             <th>Событие</th>
             <th>Номер лота</th>
             <th>Детали</th>
+            <th>Details</th>
           </tr>
         </thead>
         <tbody>
           {actions && actions.length === 0 ? (
             <tr>
-              <td colSpan={6} className="no-data">
+              <td colSpan={7} className="no-data">
                 Нет событий
               </td>
             </tr>
           ) : ( actions &&
             actions.map((action) => {
-              const details = action.details ? parseDetails(action.details) : (action.commentary ? { commentary: action.commentary } : {});
+              // Parse commentary JSON for the "Детали" column
+              const parsedDetails = action.commentary ? parseDetails(action.commentary) : {};
+              // Use the new Details field from backend (accessed via type assertion since it conflicts with computed details)
+              const extractedDetails = (action as any).details || '';
               return (
                 <tr key={action.id}>
                   <td>{action.userId}</td>
@@ -70,13 +74,14 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
                   <td>{action.lotNumber || 'N/A'}</td>
                   <td className="details-cell">
                     <div className="details-summary">
-                      {Object.entries(details).map(([key, value]) => (
+                      {Object.entries(parsedDetails).map(([key, value]) => (
                         <div key={key}>
                           <strong>{key}:</strong> {String(value)}
                         </div>
                       ))}
                     </div>
                   </td>
+                  <td>{extractedDetails || 'N/A'}</td>
                 </tr>
               );
             })

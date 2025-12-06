@@ -15,6 +15,7 @@ interface ActionFiltersProps {
     userId: string;
     startDate: string;
     endDate: string;
+    lotNumber: string;
   };
   onFilterChange: (newFilters: {
     actionType?: string;
@@ -23,6 +24,7 @@ interface ActionFiltersProps {
     userId?: string;
     startDate?: string;
     endDate?: string;
+    lotNumber?: string;
   }) => void;
 }
 
@@ -71,6 +73,19 @@ const ActionFilters: React.FC<ActionFiltersProps> = ({
           </select>
         </div>
 
+        <div className="filter-row">
+          <div className="filter-group">
+            <label>Фильтр по номеру лота:</label>
+            <input
+              className="form-control"
+              type="text"
+              placeholder="Поиск по номеру лота..."
+              value={filters.lotNumber}
+              onChange={(e) => onFilterChange({ lotNumber: e.target.value })}
+            />
+          </div>
+        </div>
+
         <div className="filter-group">
           <label>Штук на странице:</label>
           <select
@@ -106,6 +121,7 @@ const ActionFilters: React.FC<ActionFiltersProps> = ({
           />
         </div>
       </div>
+      
     </div>
   );
 };

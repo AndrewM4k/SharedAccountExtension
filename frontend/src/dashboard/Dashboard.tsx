@@ -18,6 +18,7 @@ const Dashboard: React.FC = () => {
     userId: '',
     startDate: '',
     endDate: '',
+    lotNumber: '',
   });
 
   const fetchActions = async () => {
@@ -67,6 +68,7 @@ const Dashboard: React.FC = () => {
         userId: filters.userId || undefined,
         startDate: filters.startDate || undefined,
         endDate: filters.endDate || undefined,
+        lotNumber: filters.lotNumber || undefined,
       });
 
       if (response.status !== 200) throw new Error('Failed to fetch actions');

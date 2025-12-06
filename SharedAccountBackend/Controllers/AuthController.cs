@@ -130,11 +130,12 @@ namespace SharedAccountBackend.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? userId = null,
             [FromQuery] DateTime? startDate = null,
-            [FromQuery] DateTime? endDate = null)
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] string? details = null)
         {
             try
             {
-                var result = await _actionService.GetActionsAsync(page, pageSize, actionType, search, userId, startDate, endDate);
+                var result = await _actionService.GetActionsAsync(page, pageSize, actionType, search, userId, startDate, endDate, details);
 
                 return Ok(new
                 {

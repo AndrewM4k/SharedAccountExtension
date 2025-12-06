@@ -79,6 +79,7 @@ export interface GetActionsParams {
   userId?: string;
   startDate?: string;
   endDate?: string;
+  lotNumber?: string;
 }
 
 export function getActions(params?: GetActionsParams) {
@@ -104,6 +105,9 @@ export function getActions(params?: GetActionsParams) {
   }
   if (params?.endDate) {
     queryParams.append('endDate', params.endDate);
+  }
+  if (params?.lotNumber) {
+    queryParams.append('lotNumber', params.lotNumber);
   }
 
   const queryString = queryParams.toString();
