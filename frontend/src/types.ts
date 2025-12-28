@@ -19,7 +19,7 @@ export interface CopartAction {
   userId: string;
   username?: string;
   actionTime: string;
-  actionType: 'BID' | 'PURCHASE' | 'LOGIN' | 'VIEW';
+  actionType: 'BID' | 'PURCHASE' | 'LOGIN';
   lotNumber: string;
   details: string; // JSON string (parsed from commentary, computed on frontend)
   commentary?: string; // JSON string from backend

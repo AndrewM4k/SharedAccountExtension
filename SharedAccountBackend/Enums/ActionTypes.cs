@@ -3,6 +3,6 @@
     public enum ActionTypes
     {
         Bid,
-        View
+        Login
     }
 }

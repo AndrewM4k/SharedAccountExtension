@@ -240,7 +240,7 @@ namespace SharedAccountBackend.Repositories
             var existingKeys = new HashSet<string>();
             foreach (var existing in existingActions)
             {
-                var key = $"{existing.ActionTime:O}_{existing.LotNumber}_{existing.ActionType}";
+                var key = $"{existing.ActionTime:O}_{existing.LotNumber ?? string.Empty}_{existing.ActionType}";
                 existingKeys.Add(key);
             }
 

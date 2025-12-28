@@ -56,12 +56,14 @@ namespace SharedAccountBackend.Controllers
                 return BadRequest("Username already exists");
             }
 
-            await _db.Users.AddAsync(new User
+            var newUser = new User
             {
                 Username = model.Username,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
                 Role = model.Role.ToUpper().Equals(Role.Admin.ToString().ToUpper()) || model.Role.ToUpper().Equals("ADMINISTRATOR") ? Role.Admin : Role.User 
-            });
+            };
+            
+            await _db.Users.AddAsync(newUser);
             await _db.SaveChangesAsync();
 
             return Ok();

@@ -3,7 +3,6 @@ import React from 'react';
 const actionTypes = [
   { value: '', label: 'All Actions' },
   { value: 'BID', label: 'Bids' },
-  { value: 'VIEW', label: 'View' },
   { value: 'LOGIN', label: 'Logins' },
 ];
 

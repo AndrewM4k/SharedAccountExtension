@@ -8,11 +8,11 @@ namespace SharedAccountBackend.Dtos
         public DateTime ActionTime { get; set; }
         public DateTime CreatedAt { get; set; }
         public string ActionType { get; set; }
-        public string Commentary { get; set; }
-        public string UserBidAmount { get; set; }
-        public string PageUrl { get; set; }
-        public string LotNumber { get; set; }
-        public string LotName { get; set; }
+        public string? Commentary { get; set; }
+        public string? UserBidAmount { get; set; }
+        public string? PageUrl { get; set; }
+        public string? LotNumber { get; set; }
+        public string? LotName { get; set; }
         public string? Details { get; set; }
     }
 }

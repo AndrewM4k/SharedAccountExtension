@@ -1,6 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SharedAccountBackend.Data;
 using SharedAccountBackend.Services;
+using SharedAccountBackend.Repositories;
+using SharedAccountBackend.Models;
+using SharedAccountBackend.Enums;
+using System.Security.Claims;
 
 
 namespace SharedAccountBackend.Controllers
@@ -8,22 +13,26 @@ namespace SharedAccountBackend.Controllers
     // Controllers/CopartAuthController.cs
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class CopartAuthController : ControllerBase
     {
         private readonly ILogger<CopartAuthController> _logger;
         private readonly CryptoService _cryptoService;
         private readonly AppDbContext _context;
         private readonly SeleniumService _seleniumService;
+        private readonly ICopartActionRepository _copartActionRepository;
 
         public CopartAuthController(ILogger<CopartAuthController> logger,
                                   CryptoService cryptoService,
                                   AppDbContext context,
-                                  SeleniumService seleniumService)
+                                  SeleniumService seleniumService,
+                                  ICopartActionRepository copartActionRepository)
         {
             _logger = logger;
             _cryptoService = cryptoService;
             _context = context;
             _seleniumService = seleniumService;
+            _copartActionRepository = copartActionRepository;
         }
 
         [HttpPost("auth")]
@@ -45,6 +54,29 @@ namespace SharedAccountBackend.Controllers
                 if (cookies != null && cookies.Any())
                 {
                     _logger.LogInformation("Авторизация через Selenium успешна");
+
+                    // Get current user ID from claims
+                    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    
+                    // Create Login action for successful Copart authentication
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        await _copartActionRepository.AddAsync(new CopartAction
+                        {
+                            UserId = userId,
+                            ActionType = ActionTypes.Login.ToString(),
+                            LotNumber = null,
+                            LotName = null,
+                            Commentary = null,
+                            UserBidAmount = null,
+                            PageUrl = null,
+                            Details = null,
+                            ActionTime = DateTime.UtcNow,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                        await _copartActionRepository.SaveChangesAsync();
+                        _logger.LogInformation("Login action created for user {UserId}", userId);
+                    }
 
                     // Формируем куки в формате для расширения
                     var cookieObjects = cookies.Select(cookie => new

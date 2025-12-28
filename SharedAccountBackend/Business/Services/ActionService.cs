@@ -56,8 +56,8 @@ namespace SharedAccountBackend.Business.Services
                 case ActionTypes.Bid:
                     await _copartActionRepository.SaveChangesAsync();
                     break;
-                case ActionTypes.View:
-                    await _pageViewActionRepository.SaveChangesAsync();
+                case ActionTypes.Login:
+                    await _copartActionRepository.SaveChangesAsync();
                     break;
             }
         }
@@ -91,7 +91,6 @@ namespace SharedAccountBackend.Business.Services
                 .ToList();
 
             var shouldSaveCopartActions = false;
-            var shouldSavePageViewActions = false;
 
             foreach (var action in newActions)
             {
@@ -102,9 +101,8 @@ namespace SharedAccountBackend.Business.Services
                     case ActionTypes.Bid:
                         shouldSaveCopartActions = true;
                         break;
-                    case ActionTypes.View:
+                    case ActionTypes.Login:
                         shouldSaveCopartActions = true;
-                        //shouldSavePageViewActions = true;
                         break;
                 }
             }
@@ -112,11 +110,6 @@ namespace SharedAccountBackend.Business.Services
             if (shouldSaveCopartActions)
             {
                 await _copartActionRepository.SaveChangesAsync();
-            }
-
-            if (shouldSavePageViewActions)
-            {
-                await _pageViewActionRepository.SaveChangesAsync();
             }
 
             return newActions.Count;
@@ -165,28 +158,20 @@ namespace SharedAccountBackend.Business.Services
                     });
                     break;
 
-                case ActionTypes.View:
+                case ActionTypes.Login:
                     await _copartActionRepository.AddAsync(new CopartAction
                     {
                         UserId = userId,
                         ActionType = actionDto.ActionType,
-                        LotNumber = actionDto.LotNumber,
-                        LotName = actionDto.LotName,
+                        LotNumber = null, // Login actions don't have lot numbers
+                        LotName = null,
                         Commentary = actionDto.Commentary,
-                        UserBidAmount = actionDto.UserBidAmount,
+                        UserBidAmount = null,
                         PageUrl = actionDto.PageUrl,
-                        Details = actionDto.Details,
+                        Details = null, // Login actions don't have details
                         ActionTime = timestamp,
                         CreatedAt = DateTime.UtcNow
                     });
-                    //await _pageViewActionRepository.AddAsync(new PageViewAction
-                    //{
-                    //    UserId = userId,
-                    //    ActionType = actionDto.ActionType,
-                    //    PageUrl = actionDto.PageUrl,
-                    //    Timestamp = timestamp,
-                    //    CreatedAt = DateTime.UtcNow
-                    //});
                     break;
 
                 default:
