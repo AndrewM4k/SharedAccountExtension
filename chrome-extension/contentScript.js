@@ -122,14 +122,42 @@ async function trySendSavedActions() {
 trySendSavedActions();
 // Helper function to extract lot number from page
 function extractLotNumber() {
-    // Try multiple selectors for lot number
+    // Priority 1: New Copart structure - find "Lot number:" label and get next span with p-ml-1 class
+    const lotNumberLabels = Array.from(document.querySelectorAll('span')).filter(span => span.textContent?.includes('Lot number:'));
+    if (lotNumberLabels.length > 0) {
+        // Find the span containing "Lot number:" and look for next sibling or parent's next sibling with p-ml-1
+        for (const label of lotNumberLabels) {
+            // Try to find span with p-ml-1 class in the same parent container
+            const parent = label.parentElement;
+            if (parent) {
+                const lotNumberSpan = parent.querySelector('span.p-ml-1');
+                if (lotNumberSpan && lotNumberSpan.textContent) {
+                    const lotNumber = lotNumberSpan.textContent.trim();
+                    if (lotNumber) {
+                        return lotNumber;
+                    }
+                }
+            }
+            // Alternative: find next sibling span with p-ml-1
+            let nextSibling = label.nextElementSibling;
+            while (nextSibling) {
+                if (nextSibling.classList.contains('p-ml-1') && nextSibling.textContent) {
+                    return nextSibling.textContent.trim();
+                }
+                nextSibling = nextSibling.nextElementSibling;
+            }
+        }
+    }
+    // Priority 2: Try legacy selector #LotNumber
     const lotNumberElement = document.querySelector('#LotNumber');
     if (lotNumberElement) {
         const lotNumber = lotNumberElement.textContent?.trim() || '';
         // Extract just the number (remove any extra whitespace/newlines)
-        return lotNumber.replace(/\s+/g, ' ').trim();
+        if (lotNumber) {
+            return lotNumber.replace(/\s+/g, ' ').trim();
+        }
     }
-    // Fallback: try to extract from URL if on lot detail page
+    // Priority 3: Try to extract from URL if on lot detail page
     const urlMatch = window.location.pathname.match(/\/lot\/(\d+)/);
     if (urlMatch) {
         return urlMatch[1];
@@ -138,22 +166,27 @@ function extractLotNumber() {
 }
 // Helper function to extract bid amount from page
 function extractBidAmount() {
-    // Priority 1: Check for max bid input (your-max-bid)
+    // Priority 1: Check for monster-bid-input (new Copart update)
+    const monsterBidInput = document.querySelector('#monster-bid-input');
+    if (monsterBidInput && monsterBidInput.value) {
+        return monsterBidInput.value.trim();
+    }
+    // Priority 2: Check for max bid input (your-max-bid)
     const maxBidInput = document.querySelector('#your-max-bid');
     if (maxBidInput && maxBidInput.value) {
         return maxBidInput.value.trim();
     }
-    // Priority 2: Check for maxBid input by name
+    // Priority 3: Check for maxBid input by name
     const maxBidByName = document.querySelector('input[name="maxBid"]');
     if (maxBidByName && maxBidByName.value) {
         return maxBidByName.value.trim();
     }
-    // Priority 3: Check for start-bid input (backward compatibility)
+    // Priority 4: Check for start-bid input (backward compatibility)
     const bidInput = document.querySelector('#start-bid');
     if (bidInput && bidInput.value) {
         return bidInput.value.trim();
     }
-    // Priority 4: Try alternative selectors (backward compatibility)
+    // Priority 5: Try alternative selectors (backward compatibility)
     const altBidInput = document.querySelector('input[name="startBid"]');
     if (altBidInput && altBidInput.value) {
         return altBidInput.value.trim();
@@ -199,17 +232,22 @@ function getActionDescription(button) {
 }
 // Helper function to extract lot name from page
 function extractLotName() {
-    // Priority 1: Try to get from h1.title (first h1 tag with class "title")
+    // Priority 1: Try to get from h1.ldp-header-title.p-mt-0 (new Copart update)
+    const ldpTitleElement = document.querySelector('h1.ldp-header-title.p-mt-0');
+    if (ldpTitleElement) {
+        return ldpTitleElement.textContent?.trim() || '';
+    }
+    // Priority 2: Try to get from h1.title (first h1 tag with class "title")
     const titleElement = document.querySelector('h1.title');
     if (titleElement) {
         return titleElement.textContent?.trim() || '';
     }
-    // Priority 2: Try other h1 tags or lot-title class
+    // Priority 3: Try other h1 tags or lot-title class
     const altTitleElement = document.querySelector('h1, .lot-title, [data-uname="lotdetailTitle"]');
     if (altTitleElement) {
         return altTitleElement.textContent?.trim() || '';
     }
-    // Priority 3: Try to extract from URL
+    // Priority 4: Try to extract from URL
     const urlMatch = window.location.pathname.match(/\/lot\/\d+\/([^/]+)/);
     if (urlMatch) {
         return decodeURIComponent(urlMatch[1].replace(/-/g, ' '));
@@ -394,7 +432,46 @@ document.addEventListener('click', function (event) {
         event.stopImmediatePropagation();
         return;
     }
-    // 4. Bid now button: <button class="btn btn-yellow-rd" ng-click="openPrelimBidModal()">Bid now</button>
+    // 4. Bid now button with id="bidNowBtn": <button id="bidNowBtn" class="cprt-btn-blue-white lot-details-button">Bid now</button>
+    if (target.closest('button#bidNowBtn') ||
+        target.id === 'bidNowBtn' ||
+        (target.tagName === 'BUTTON' && target.id === 'bidNowBtn') ||
+        (target.closest('button') && target.closest('button')?.id === 'bidNowBtn')) {
+        const button = target.closest('button') || target;
+        const lotNumber = extractLotNumber();
+        const bidAmount = extractBidAmount();
+        // Extract lot name from h1.ldp-header-title.p-mt-0 for this specific button
+        const ldpTitleElement = document.querySelector('h1.ldp-header-title.p-mt-0');
+        const lotName = ldpTitleElement ? ldpTitleElement.textContent?.trim() || '' : extractLotName();
+        const details = extractDetails(button);
+        actionData = {
+            actionType: 'Bid',
+            lotNumber: lotNumber,
+            userBidAmount: bidAmount,
+            timestamp: new Date().toISOString(),
+            pageUrl: window.location.href,
+            lotName: lotName,
+            commentary: 'Bid now button clicked (bidNowBtn)',
+            details: details || lotName,
+        };
+        console.log('Bid now button (bidNowBtn) clicked, data:', actionData);
+        // Debounce check
+        const actionKey = getActionKey(actionData);
+        const now = Date.now();
+        if (now - lastActionTime < CLICK_DEBOUNCE_MS && lastActionKey === actionKey) {
+            console.log('Content script: Duplicate action ignored (debounce)');
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            return;
+        }
+        lastActionTime = now;
+        lastActionKey = actionKey;
+        sendActionToBackground(actionData);
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        return;
+    }
+    // 5. Bid now button: <button class="btn btn-yellow-rd" ng-click="openPrelimBidModal()">Bid now</button>
     //    Also handles: <button class="btn btn-yellow-rd" ng-click="openIncreaseBidModal()">Bid now</button>
     if (target.closest('button.btn.btn-yellow-rd') ||
         (target.tagName === 'BUTTON' &&
@@ -455,7 +532,7 @@ document.addEventListener('click', function (event) {
     //     return;
     //   }
     // }
-    // 6. Legacy test selector - keep for backward compatibility
+    // 7. Legacy test selector - keep for backward compatibility
     if (target.matches('a[aria-controls="serverSideDataTable_mylots"][data-dt-idx="0"]')) {
         const lotNumber = extractLotNumber();
         const bidAmount = extractBidAmount();

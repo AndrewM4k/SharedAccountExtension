@@ -20,14 +20,6 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
 }) => {
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const parseDetails = (details: string) => {
-    try {
-      return JSON.parse(details);
-    } catch {
-      return {};
-    }
-  };
-
   if (loading) {
     return <div className="loading-indicator">Загрузка событий...</div>;
   }
@@ -43,21 +35,18 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
             <th>Событие</th>
             <th>Номер лота</th>
             <th>Детали</th>
-            <th>Details</th>
           </tr>
         </thead>
         <tbody>
           {actions && actions.length === 0 ? (
             <tr>
-              <td colSpan={7} className="no-data">
+              <td colSpan={6} className="no-data">
                 Нет событий
               </td>
             </tr>
           ) : ( actions &&
             actions.map((action) => {
-              // Parse commentary JSON for the "Детали" column
-              const parsedDetails = action.commentary ? parseDetails(action.commentary) : {};
-              // Use the new Details field from backend (accessed via type assertion since it conflicts with computed details)
+              // Use the Details field from backend (accessed via type assertion since it conflicts with computed details)
               const extractedDetails = (action as any).details || '';
               return (
                 <tr key={action.id}>
@@ -72,16 +61,7 @@ const CopartActionsTable: React.FC<CopartActionsTableProps> = ({
                     </span>
                   </td>
                   <td>{action.lotNumber || 'N/A'}</td>
-                  <td className="details-cell">
-                    <div className="details-summary">
-                      {Object.entries(parsedDetails).map(([key, value]) => (
-                        <div key={key}>
-                          <strong>{key}:</strong> {String(value)}
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                  <td>{extractedDetails || 'N/A'}</td>
+                  <td className="details-cell">{extractedDetails || 'N/A'}</td>
                 </tr>
               );
             })
